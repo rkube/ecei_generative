@@ -1,4 +1,4 @@
-using ecei_generative: get_framedata, train_decsr!, train_gen!
+using ecei_generative: get_framedata, train_dscr!, train_gen!
 using Flux
 using Flux.Data: DataLoader
 using Zygote
@@ -8,8 +8,8 @@ using Printf
 n_features = 24*8
 latent_dim = 64
 
-data = get_framedata()
-train_loader = DataLoader(data, batchsize=64, shuffle-true)
+data = get_framedata() |> gpu;
+train_loader = DataLoader(data, batchsize=64, shuffle=true)
 
 opt_dscr = ADAM(2e-4)
 opt_gen = ADAM(2e-4)
@@ -40,9 +40,9 @@ real_data = flatten(x)
 # Generate noise
 noise = randn(latent_dim, this_batch) |> gpu
 fake_data = generator(noise)
-loss_dscr = train_dscr!(discriminator, real_data, fake_data, this_batch)
+loss_dscr = train_dscr!(discriminator, real_data, fake_data, this_batch, opt_dscr)
 loss_sum_dscr += loss_dscr
 
-loss_gen = train_gen!(discriminator, generator)
+loss_gen = train_gen!(discriminator, generator, opt_gen, latent_dim, batch_size)
 loss_sum_gen += loss_gen
 

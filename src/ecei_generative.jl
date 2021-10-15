@@ -1,6 +1,10 @@
 module ecei_generative
 
 using Printf
+using HDF5
+using CUDA
+using Flux
+using Zygote
 
 """
     Loads frames from hdf5 file
@@ -15,20 +19,20 @@ function get_framedata(shotnr=25259, dev="GT", chunk=137)
    # Permute dimensions: dim1: rows, dim2: columns, dim3: time
    frame_data = permutedims(fid[dset_name][:,:,:], [3, 2, 1])
    close(fid)
+   convert(Array{Float32, 3}, frame_data)
 
-   return frame_data
 end
 
 
 """
     Train GAN discriminator. This is taken from my mnist_gan package
 """
-function train_dscr!(discriminator, real_data, fake_data, this_batch)
+function train_dscr!(discriminator, real_data, fake_data, this_batch, opt_dscr)
     # Given real and fake data, update the parameters of the discriminator network in-place
     # Assume that size(real_data) = 784xthis_batch
     # this_batch is the number of samples in the current batch
     # Concatenate real and fake data into one big vector
-    all_data = hcat(real_data, fake_data)
+    all_data = hcat(real_data, fake_data);
     # Target vector for predictions
     all_target = [ones(eltype(real_data), 1, this_batch) zeros(eltype(fake_data), 1, this_batch)] |> gpu;
 
@@ -52,7 +56,7 @@ end
 """
     Train GAN generator. This is taken from my mnist_gan package
 """
-function train_gen!(discriminator, generator)
+function train_gen!(discriminator, generator, opt_gen, latent_dim, batch_size)
     # Updates the parameters of the generator in-place
     # Let the generator create fake data which should out-smart the discriminator
     # The discriminator is fooled if it outputs a 1 for the samples generated
