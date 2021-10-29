@@ -4,9 +4,11 @@ authors = ["ralph_kube@gmx.net"]
 version = "0.1.0"
 
 [deps]
+Atom = "c52e3926-4ff0-5f6e-af25-54175e0327b1"
 CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
 Flux = "587475ba-b771-5e3f-ad9e-33799f191a9c"
 HDF5 = "f67ccb44-e63f-5c2f-98bd-6dc0ccc4ba2f"
+Juno = "e5e0dc1b-0480-54bc-9374-aad01c23163d"
 Pluto = "c3e4b0f8-55cb-11ea-2926-15256bba5781"
 Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 UnicodePlots = "b8865327-cd53-5732-bb35-84acbb429228"
