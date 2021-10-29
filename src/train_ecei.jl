@@ -18,9 +18,9 @@ train_loader = DataLoader(data, batchsize=batch_size, shuffle=true)
 opt_dscr = ADAM(2e-4)
 opt_gen = ADAM(2e-4)
 
-discriminator = get_vanilla_discriminator() |> gpu;
+discriminator = get_vanilla_discriminator(n_features) |> gpu;
 
-generator = get_vanilla_generator() |> gpu;
+generator = get_vanilla_generator(latent_dim, n_features) |> gpu;
 
 ps_g = Flux.params(generator);
 ps_d = Flux.params(discriminator);
