@@ -1,4 +1,4 @@
-using ecei_generative: get_framedata, train_dscr!, train_gen!
+using ecei_generative: get_framedata, train_dscr!, train_gen!, get_vanilla_discriminator, get_vanilla_generator
 using Flux
 using Flux.Data: DataLoader
 using Zygote
@@ -18,16 +18,9 @@ train_loader = DataLoader(data, batchsize=batch_size, shuffle=true)
 opt_dscr = ADAM(2e-4)
 opt_gen = ADAM(2e-4)
 
-discriminator = Chain(Dense(n_features, 256, x -> leakyrelu(x, 0.2f0)),
-                      Dropout(0.3),
-                      Dense(256, 128, x -> leakyrelu(x, 0.2f0)),
-                      Dropout(0.3),
-                      Dense(128, 1, sigmoid)) |> gpu;
+discriminator = get_vanilla_discriminator() |> gpu;
 
-generator = Chain(Dense(latent_dim, 128, x -> leakyrelu(x, 0.2f0)),
-                  Dense(128, 128, x -> leakyrelu(x, 0.2f0)),
-                  Dense(128, 128, x -> leakyrelu(x, 0.2f0)),
-                  Dense(128, n_features, tanh)) |> gpu;
+generator = get_vanilla_generator() |> gpu;
 
 ps_g = Flux.params(generator);
 ps_d = Flux.params(discriminator);
@@ -61,7 +54,5 @@ for n ∈ 1:num_epochs
     #    fake_data = reshape(generator(noise), 24, 8*4);
     #    #p = heatmap(fake_data, colormap=:inferno)
     #    print(p)
-    end 
+    end
 end
-
-
