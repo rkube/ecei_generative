@@ -33,8 +33,8 @@ end
 
 # ╔═╡ f440bdf6-1019-4c1b-8b10-d0cbb0c15411
 begin
-	datadir = "/home/rkube/gpfs/KSTAR/022289/"
-	filename = "ECEI.022289.GT.h5"
+	datadir = "/home/rkube/gpfs/KSTAR/025259/"
+	filename = "ECEI.025259.GT.h5"
 	fid = h5open(joinpath(datadir, filename), "r")
 end
 
@@ -177,9 +177,15 @@ end
 # ╔═╡ 63f533ae-7165-40cd-9c78-ee69cd62b50c
 size(data_norm)
 
+# ╔═╡ fa0d9c44-d97e-4764-9da9-da911bea61d6
+rt = Bandpass(0.14, 0.2; fs=2.0 / dt)
+
+# ╔═╡ 143046e4-b690-4919-b7dd-634fc13051a4
+1.0 / dt * 1e-5
+
 # ╔═╡ d6667ab4-cb0d-40d2-b68b-b9663d8af927
 begin
-	responsetype = Bandpass(0.02, 0.036) #, fs= 1 ./ dt)
+	responsetype = Bandpass(35000, 50000; fs=1.0/dt) #, fs= 1 ./ dt)
 	designmethod = Butterworth(4)
 	my_filter = digitalfilter(responsetype, designmethod)
 end
@@ -204,10 +210,10 @@ begin
 end
 
 # ╔═╡ 26877ccf-477d-44eb-b12f-823a69f7b94a
-contourf(data_norm_ip[370_606,:,:], clims=(-0.3,0.3), color=:bluesreds)
+contourf(data_norm_filt[379_515,:,:], clims=(-0.3,0.3), color=:bluesreds)
 
 # ╔═╡ 489e7d1f-a711-4ec8-9672-beaf500f5beb
-tbase[1_370_000]
+tbase[1_379_500]
 
 # ╔═╡ b8ce6b5d-bc3c-49a5-9047-c5d58fd2b3ca
 0.02 / 5e-7
@@ -1254,6 +1260,8 @@ version = "0.9.1+5"
 # ╠═51f76fb5-72d6-404f-a736-6e843f57adc3
 # ╠═3b7d5b38-7071-4abb-b44a-f210b53c772a
 # ╠═63f533ae-7165-40cd-9c78-ee69cd62b50c
+# ╠═fa0d9c44-d97e-4764-9da9-da911bea61d6
+# ╠═143046e4-b690-4919-b7dd-634fc13051a4
 # ╠═d6667ab4-cb0d-40d2-b68b-b9663d8af927
 # ╠═004a1b8a-ffe5-47bb-960a-bfe894cd5ea7
 # ╠═881372e2-1c35-481f-9a49-f24f10ff75e8
