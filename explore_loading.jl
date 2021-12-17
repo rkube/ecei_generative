@@ -128,12 +128,6 @@ function generate_ip_index_set(bad_channels)
 	return ipol_dict
 end
 
-# ╔═╡ 388b3da4-b0b6-44c4-9c3d-c49e038609bd
-begin
-	foo = []
-	push!(foo, CartesianIndex(1,1))
-end
-
 # ╔═╡ 21e29a9f-e6bf-4b35-9fac-bf91fe1e9e5f
 function ip_bad_values(field, ipol_dict)
 	#field = data_norm[1,:,:]
@@ -161,6 +155,11 @@ end
 # ╔═╡ 51f76fb5-72d6-404f-a736-6e843f57adc3
 ipol_dict = generate_ip_index_set(bad_channels)
 
+# ╔═╡ e5af61f2-0e70-44aa-816c-f382a41562c4
+for k in keys(ipol_dict)
+	@show k
+end
+
 # ╔═╡ 2279bdfe-2903-4abf-8bb4-bad5dae0f7a3
 ip_bad_values(data_norm[1,:,:], ipol_dict)
 
@@ -169,7 +168,7 @@ begin
 	data_norm_ip = similar(data_norm)
 	# ipol_dict = generate_ip_index_set(bad_channels)
 
-	Threads.@threads for i in 1:size(data_norm)[1]2
+	Threads.@threads for i in 1:size(data_norm)[1]
 		data_norm_ip[i,:,:] = ip_bad_values(data_norm[i,:,:], ipol_dict)
 	end
 end
@@ -1254,7 +1253,7 @@ version = "0.9.1+5"
 # ╠═754bb2a0-c80a-4da6-9473-9d56c932499b
 # ╠═b53ef757-542a-4601-a8c2-cce0a462f2e6
 # ╠═283ed241-e2f9-41ab-aec8-21298f50fcd5
-# ╠═388b3da4-b0b6-44c4-9c3d-c49e038609bd
+# ╠═e5af61f2-0e70-44aa-816c-f382a41562c4
 # ╠═21e29a9f-e6bf-4b35-9fac-bf91fe1e9e5f
 # ╠═2279bdfe-2903-4abf-8bb4-bad5dae0f7a3
 # ╠═51f76fb5-72d6-404f-a736-6e843f57adc3

@@ -1,5 +1,6 @@
 using HDF5
 using Printf
+using Statistics
 using DSP
 
 """
@@ -42,12 +43,11 @@ function ip_bad_values(field, ipol_dict)
 	Ifirst, Ilast = first(R), last(R) # Range for interpolation
 	I_one = oneunit(Ifirst) # Unit square around a pixel
 
-	for bad_px in findall(bad_channels)
+    for bad_px in keys(ipol_dict)
 		bad_px_entries = ipol_dict[bad_px]
-		maxxx = length(bad_px_entries)
 
 		ip_val = 0.0
-		for J in ipol_dict[bad_px]
+		for J in bad_px_entries
 			ip_val += field[J]
 		end
 		ip_val = ip_val / length(ipol_dict[bad_px])
@@ -78,16 +78,11 @@ end
 """
 function load_from_hdf(t_start, t_end, datadir, shotnr, dev)
 
-	dt = 2e-6 # Sampling frequency
-	t_norm_0 = -0.099 # Start of index used for normalization
-	t_norm_1 = -0.089 # End of index used for normalization
-	tbase = (1:5_000_000) .* dt .+ TriggerTime[1] # Time-base used for samples
-	tidx_norm = (tbase .> t_norm_0) .& (tbase .< t_norm_1) # Indices that are to be 
 
     # Array that holds the raw data
     raw_frames = zeros(5_000_000, 24, 8)
     # Construct the filename
-    filename = @sprintf "ECEI.{%06d}.{%s}.h5" shotnr dev
+    filename = @sprintf "ECEI.%06d.%s.h5" shotnr dev
 
     # Open HDF5 file
     fid = h5open(joinpath(datadir, filename), "r")
@@ -100,17 +95,22 @@ function load_from_hdf(t_start, t_end, datadir, shotnr, dev)
 			#ch_idx = ch_to_idx(channel_str)
 			h5_var_name = "/ECEI/ECEI_" * channel_str * "/Voltage"
 			A = read(fid, h5_var_name)
-			all_data[:, ch_v, ch_h] = A[:] .* 1e-4
+			raw_frames[:, ch_v, ch_h] = A[:] .* 1e-4
 		end
 	end
+	dt = 2e-6 # Sampling frequency
+	t_norm_0 = -0.099 # Start of index used for normalization
+	t_norm_1 = -0.089 # End of index used for normalization
+	tbase = (1:5_000_000) .* dt .+ TriggerTime[1] # Time-base used for samples
+	tidx_norm = (tbase .> t_norm_0) .& (tbase .< t_norm_1) # Indices that are to be 
 
     # Calculate offsets, normalize, etc.
 	# Normalize
-	offlev = median(all_data[tidx_norm, :, :], dims=1)
-	offstd = std(all_data[tidx_norm, :, :], dims=1)
+	offlev = median(raw_frames[tidx_norm, :, :], dims=1)
+	offstd = std(raw_frames[tidx_norm, :, :], dims=1)
 
 
-	data_norm = all_data[1_000_000:end, :, :] .- offlev;
+	data_norm = raw_frames[1_000_000:end, :, :] .- offlev;
 
 	siglev = median(data_norm, dims=1)
 	sigstd = std(data_norm, dims=1)
