@@ -33,6 +33,11 @@ end
 
 # ╔═╡ f440bdf6-1019-4c1b-8b10-d0cbb0c15411
 begin
+	t_start = 2.0
+	t_end = 10.0
+	dt = 2e-6 # Sampling frequency
+	t_norm_0 = -0.099 # Start of index used for normalization
+	t_norm_1 = -0.089 # End of index used for normalization	
 	datadir = "/home/rkube/gpfs/KSTAR/025259/"
 	filename = "ECEI.025259.GT.h5"
 	fid = h5open(joinpath(datadir, filename), "r")
@@ -61,14 +66,18 @@ contourf(all_data[4_000_000,:,:])
 # ╔═╡ cbdee39b-9b78-4aa6-97f0-7ebcd0a9a2be
 # Create a time base
 begin
-	dt = 2e-6 # Sampling frequency
-	t_norm_0 = -0.099 # Start of index used for normalization
-	t_norm_1 = -0.089 # End of index used for normalization
 	TriggerTime = read(attributes(fid["/ECEI"])["TriggerTime"]) # Time at trigger
 	tbase = (1:5_000_000) .* dt .+ TriggerTime[1] # Time-base used for samples
 	tidx_norm = (tbase .> t_norm_0) .& (tbase .< t_norm_1) # Indices that are to be used for normalization
+	tidx_all = (tbase .> t_start) .& (tbase .< t_end)
 end
 
+
+# ╔═╡ d536b4f0-6486-43ab-ad08-8b58b8a6bc47
+sum(tidx_all)
+
+# ╔═╡ d75f56b4-bf0e-47f9-a294-8ae783f46f30
+TriggerTime
 
 # ╔═╡ cf370d7e-1804-4e08-8e03-4f0e272cd1e4
 begin
@@ -138,12 +147,11 @@ function ip_bad_values(field, ipol_dict)
 	Ifirst, Ilast = first(R), last(R) # Range for interpolation
 	I_one = oneunit(Ifirst) # Unit square around a pixel
 
-	for bad_px in findall(bad_channels)
+	for bad_px in keys(ipol_dict)
 		bad_px_entries = ipol_dict[bad_px]
-		maxxx = length(bad_px_entries)
 
 		ip_val = 0.0
-		for J in ipol_dict[bad_px]
+		for J in bad_px_entries
 			ip_val += field[J]
 		end
 		ip_val = ip_val / length(ipol_dict[bad_px])
@@ -175,12 +183,6 @@ end
 
 # ╔═╡ 63f533ae-7165-40cd-9c78-ee69cd62b50c
 size(data_norm)
-
-# ╔═╡ fa0d9c44-d97e-4764-9da9-da911bea61d6
-rt = Bandpass(0.14, 0.2; fs=2.0 / dt)
-
-# ╔═╡ 143046e4-b690-4919-b7dd-634fc13051a4
-1.0 / dt * 1e-5
 
 # ╔═╡ d6667ab4-cb0d-40d2-b68b-b9663d8af927
 begin
@@ -285,9 +287,9 @@ version = "1.0.8+0"
 
 [[Cairo_jll]]
 deps = ["Artifacts", "Bzip2_jll", "Fontconfig_jll", "FreeType2_jll", "Glib_jll", "JLLWrappers", "LZO_jll", "Libdl", "Pixman_jll", "Pkg", "Xorg_libXext_jll", "Xorg_libXrender_jll", "Zlib_jll", "libpng_jll"]
-git-tree-sha1 = "f2202b55d816427cd385a9a4f3ffb226bee80f99"
+git-tree-sha1 = "4b859a208b2397a7a623a03449e4636bdb17bcf2"
 uuid = "83423d85-b0ee-5818-9007-b63ccbeb887a"
-version = "1.16.1+0"
+version = "1.16.1+1"
 
 [[ChainRulesCore]]
 deps = ["Compat", "LinearAlgebra", "SparseArrays"]
@@ -482,9 +484,9 @@ version = "0.21.0+0"
 
 [[Glib_jll]]
 deps = ["Artifacts", "Gettext_jll", "JLLWrappers", "Libdl", "Libffi_jll", "Libiconv_jll", "Libmount_jll", "PCRE_jll", "Pkg", "Zlib_jll"]
-git-tree-sha1 = "74ef6288d071f58033d54fd6708d4bc23a8b8972"
+git-tree-sha1 = "a32d672ac2c967f3deb8a81d828afc739c838a06"
 uuid = "7746bdde-850d-59dc-9ae8-88ece973131d"
-version = "2.68.3+1"
+version = "2.68.3+2"
 
 [[Graphite2_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
@@ -1248,6 +1250,8 @@ version = "0.9.1+5"
 # ╠═0f90523a-8c0e-4fa1-8c7b-f32f29f04151
 # ╠═b3b4fb21-71dc-4cc1-a50a-3887b19b1a25
 # ╠═cbdee39b-9b78-4aa6-97f0-7ebcd0a9a2be
+# ╠═d536b4f0-6486-43ab-ad08-8b58b8a6bc47
+# ╠═d75f56b4-bf0e-47f9-a294-8ae783f46f30
 # ╠═cf370d7e-1804-4e08-8e03-4f0e272cd1e4
 # ╠═0ad2fc36-9760-4dd6-8dbd-706b83f89427
 # ╠═754bb2a0-c80a-4da6-9473-9d56c932499b
@@ -1259,8 +1263,6 @@ version = "0.9.1+5"
 # ╠═51f76fb5-72d6-404f-a736-6e843f57adc3
 # ╠═3b7d5b38-7071-4abb-b44a-f210b53c772a
 # ╠═63f533ae-7165-40cd-9c78-ee69cd62b50c
-# ╠═fa0d9c44-d97e-4764-9da9-da911bea61d6
-# ╠═143046e4-b690-4919-b7dd-634fc13051a4
 # ╠═d6667ab4-cb0d-40d2-b68b-b9663d8af927
 # ╠═004a1b8a-ffe5-47bb-960a-bfe894cd5ea7
 # ╠═881372e2-1c35-481f-9a49-f24f10ff75e8

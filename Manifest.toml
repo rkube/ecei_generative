@@ -97,6 +97,12 @@ git-tree-sha1 = "bf98fa45a0a4cee295de98d4c1462be26345b9a1"
 uuid = "9e997f8a-9a97-42d5-a9f1-ce6bfc15e2c0"
 version = "0.1.2"
 
+[[Clustering]]
+deps = ["Distances", "LinearAlgebra", "NearestNeighbors", "Printf", "SparseArrays", "Statistics", "StatsBase"]
+git-tree-sha1 = "75479b7df4167267d75294d14b58244695beb2ac"
+uuid = "aaaa29a8-35af-508c-8bc3-b662a17a0fe5"
+version = "0.14.2"
+
 [[CodeTools]]
 deps = ["LNR", "Lazy", "Markdown", "Pkg", "Tokenize"]
 git-tree-sha1 = "9c4489c7d22b8f28635a999d5d7696b31f931829"
@@ -599,6 +605,12 @@ version = "0.1.11"
 git-tree-sha1 = "f755f36b19a5116bb580de457cda0c140153f283"
 uuid = "77ba4419-2d1f-58cd-9bb1-8ffee604a2e3"
 version = "0.3.6"
+
+[[NearestNeighbors]]
+deps = ["Distances", "StaticArrays"]
+git-tree-sha1 = "16baacfdc8758bc374882566c9187e785e85c2f0"
+uuid = "b8a86587-4115-5ab1-83bc-aa920d37bbce"
+version = "0.4.9"
 
 [[NetworkOptions]]
 uuid = "ca575930-c2e3-43a9-ace4-1e988b2c1908"

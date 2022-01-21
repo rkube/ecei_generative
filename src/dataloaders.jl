@@ -3,6 +3,8 @@ using Printf
 using Statistics
 using DSP
 
+export generate_ip_index_set, ip_bad_values, get_framedata, load_from_hdf
+
 """
    Returns a list of indices that are to be used for interpolation around bad channels.
    bad_channels: 2d bit-mask where a bad channel is marked as true
@@ -73,10 +75,26 @@ function get_framedata(shotnr=25259, dev="GT", chunk=137, datadir="/home/rkube/r
 end
 
 
+@doc """
+
+    load_from_hdf
+
+Load ECEi frames from HDF5 - raw data with local pre-processing
+
+Parameters:
+* t_start - Start time for returned ECEI data. In seconds.
+* t_end - End time for returned ECEI data. In seconds.
+* f_filt_lo - Lower end of bandpass filter. In Hz.
+* f_filt_hi - Upper end of bandpass filter. In Hz.
+* datadir - Directory where HDF5 files are locaed
+* shotnr - Shot number
+* dev - ECEI device
+Keywords: 
+* t_norm_0 - Start point of interval used for normalization. Default=-0.099. In seconds.
+* t_norm_1 - End point of interval used for normalization. Default=-0.089. In seconds.
+* dt - Sampling Time. Default = 2e-6. In seconds.
 """
-    Load ECEi frames from HDF5 - raw data with local pre-processing
-"""
-function load_from_hdf(t_start, t_end, datadir, shotnr, dev)
+function load_from_hdf(t_start, t_end, f_filt_lo, f_filt_hi, datadir, shotnr, dev; t_norm_0=-0.099, t_norm_1=-0.089, dt=2e-6)
 
 
     # Array that holds the raw data
@@ -86,8 +104,14 @@ function load_from_hdf(t_start, t_end, datadir, shotnr, dev)
 
     # Open HDF5 file
     fid = h5open(joinpath(datadir, filename), "r")
-
+    
+    # Process TriggerTime and build timebase vectors
 	TriggerTime = read(attributes(fid["/ECEI"])["TriggerTime"]) # Time at trigger
+	tbase = (1:5_000_000) .* dt .+ TriggerTime[1] # Time-base used for samples
+	tidx_norm = (tbase .> t_norm_0) .& (tbase .< t_norm_1) # Indices that are to be used for normalization
+    tidx_all = (tbase .> t_start) .& (tbase .< t_end) # Indices for data that will be returned
+    @show sum(tidx_norm), sum(tidx_all)
+
     # Read data from HDF5 file
     for ch_v in 1:24 # iterate over vertical channels
         for ch_h in 1:8 # iterate over horizontal channels
@@ -98,11 +122,6 @@ function load_from_hdf(t_start, t_end, datadir, shotnr, dev)
 			raw_frames[:, ch_v, ch_h] = A[:] .* 1e-4
 		end
 	end
-	dt = 2e-6 # Sampling frequency
-	t_norm_0 = -0.099 # Start of index used for normalization
-	t_norm_1 = -0.089 # End of index used for normalization
-	tbase = (1:5_000_000) .* dt .+ TriggerTime[1] # Time-base used for samples
-	tidx_norm = (tbase .> t_norm_0) .& (tbase .< t_norm_1) # Indices that are to be 
 
     # Calculate offsets, normalize, etc.
 	# Normalize
@@ -110,7 +129,7 @@ function load_from_hdf(t_start, t_end, datadir, shotnr, dev)
 	offstd = std(raw_frames[tidx_norm, :, :], dims=1)
 
 
-	data_norm = raw_frames[1_000_000:end, :, :] .- offlev;
+	data_norm = raw_frames[tidx_all, :, :] .- offlev;
 
 	siglev = median(data_norm, dims=1)
 	sigstd = std(data_norm, dims=1)
@@ -137,7 +156,7 @@ function load_from_hdf(t_start, t_end, datadir, shotnr, dev)
 
     # Apply bandpass filter.
     # TODO: Remove hard-coded pass and stop band
-	responsetype = Bandpass(35000, 50000; fs=1.0/dt) 
+	responsetype = Bandpass(f_filt_lo, f_filt_hi; fs=1.0/dt) 
 	designmethod = Butterworth(4)
 	my_filter = digitalfilter(responsetype, designmethod)
 
