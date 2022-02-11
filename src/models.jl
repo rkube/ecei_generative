@@ -11,7 +11,7 @@ gemerator = ecei_generative.vanilla_generator() |> gpu;
 
 """
 
-export get_vanilla_discriminator, get_dc_discriminator, get_vanilla_generator, get_dc_generator
+export get_vanilla_discriminator, get_dc_discriminator, get_cat_discriminator,  get_vanilla_generator, get_dc_generator, get_dc_generator_v2
 
 
 function get_vanilla_discriminator(n_features)
@@ -23,11 +23,41 @@ function get_vanilla_discriminator(n_features)
 end
 
 function get_dc_discriminator(args)
-    return Chain(Conv((3, 7), 1=>8, relu),   # Image is now 6x18x8
-                 Conv((3, 7), 8=>32, relu),  # Image is now 4x12x32
-                 Conv((3, 7), 32=>32, relu), # Image is now 2x6x32
+    if args["activation"] in ["celu", "elu", "leakyrelu"]
+        act = Base.Fix2(getfield(NNlib, Symbol(args["activation"])), Float32(args["activation_alpha"]))
+    else
+        act = getfield(NNlib, Symbol(args["activation"]));
+    end
+   
+    return Chain(Conv((3, 7), 1=>8, bias=false),   # Image is now 6x18x8
+                 BatchNorm(8, act),
+                 Conv((3, 7), 8=>32, bias=false),  # Image is now 4x12x32
+                 BatchNorm(32, act),
+                 Conv((3, 7), 32=>32, bias=false), # Image is now 2x6x32
+                 BatchNorm(32, act),
                  Flux.flatten,               # Image is now 384 wide 
+                 Dropout(0.3),
                  Dense(384, 1, sigmoid));   
+end
+
+function get_cat_discriminator(args)
+    # Same as dc_discriminator, but a softmax at the end
+    if args["activation"] in ["celu", "elu", "leakyrelu"]
+        act = Base.Fix2(getfield(NNlib, Symbol(args["activation"])), Float32(args["activation_alpha"]))
+    else
+        act = getfield(NNlib, Symbol(args["activation"]));
+    end
+   
+    return Chain(Conv((3, 7), 1=>8, bias=false),   # Image is now 6x18x8
+                 BatchNorm(8, act),
+                 Conv((3, 7), 8=>32, bias=false),  # Image is now 4x12x32
+                 BatchNorm(32, act),
+                 Conv((3, 7), 32=>32, bias=false), # Image is now 2x6x32
+                 BatchNorm(32, act),
+                 Flux.flatten,               # Image is now 384 wide 
+                 Dropout(0.3),
+                 Dense(384, 2),
+                 x -> softmax(x));   
 end
 
 
@@ -39,9 +69,36 @@ end
 
 
 function get_dc_generator(args)
+    if args["activation"] in ["celu", "elu", "leakyrelu"]
+        act = Base.Fix2(getfield(NNlib, Symbol(args["activation"])), Float32(args["activation_alpha"]))
+    else
+        act = getfield(NNlib, Symbol(args["activation"]));
+    end
+
     return Chain(Dense(args["latent_dim"], 384, relu), # Image is now 384 wide
                  x -> reshape(x, (2, 6, 32, :)),  # Image is now 2x6x32
                  ConvTranspose((3, 7), 32 => 32, relu),  # Image is now 4x12x32
                  ConvTranspose((3, 7), 32 => 8, relu),  # Image is now 6x18x8
                  ConvTranspose((3, 7), 8=>1, tanh));
 end
+
+
+function get_dc_generator_v2(args)
+    if args["activation"] in ["celu", "elu", "leakyrelu"]
+        act = Base.Fix2(getfield(NNlib, Symbol(args["activation"])), Float32(args["activation_alpha"]))
+    else
+        act = getfield(NNlib, Symbol(args["activation"]));
+    end
+
+    return Chain(Dense(args["latent_dim"], 2048, relu, bias=false), 
+                 x -> reshape(x, (4, 16, 32, :)), 
+                 BatchNorm(32, leakyrelu),
+                 ConvTranspose((3, 5), 32 => 32, bias=false),
+                 BatchNorm(32, leakyrelu),
+                 ConvTranspose((3, 5), 32 => 32, bias=false),
+                 BatchNorm(32, leakyrelu),
+                 Conv((3, 5), 32 => 1, pad=SamePad(), tanh))
+end
+
+
+
