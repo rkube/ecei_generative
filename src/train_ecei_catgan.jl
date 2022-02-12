@@ -3,6 +3,7 @@
 # 
 using Flux
 using Flux.Data: DataLoader
+using Flux: onehotbatch
 using CUDA
 using Zygote
 using Printf
@@ -18,8 +19,8 @@ println("Remember to set GKSwstype=nul")
 
 tb_logger = TBLogger("logs/testlog")
                     
-args = Dict("batch_size" => 512, "activation" => "relu", "activation_alpha" => 0.2, 
-            "num_epochs" => 20, "latent_dim" => 64, "lambda" => 1e-3,
+args = Dict("batch_size" => 1024, "activation" => "leakyrelu", "activation_alpha" => 0.2, 
+            "num_epochs" => 10, "latent_dim" => 64, "lambda" => 1e-2,
             "lr_D" => 0.0002, "lr_G" => 0.0002)
 
 with_logger(tb_logger) do
@@ -40,7 +41,9 @@ data_all = convert.(Float32, data_all);
 data_all = 2.0 * (data_all .- minimum(data_all)) / (maximum(data_all) - minimum(data_all)) .- 1.0 |> gpu;
 
 # Label the various classes
-labels_all = labels_all = [zeros(Float32, size(data_1)[1]); ones(Float32, size(data_2)[1])] |> gpu;
+labels_1 = onehotbatch(repeat([:a], size(data_1)[1]), [:a, :b]) |> gpu;
+labels_2 = onehotbatch(repeat([:b], size(data_1)[1]), [:a, :b]) |> gpu;
+labels_all = cat(labels_1, labels_2, dims=2);
 
 train_loader = DataLoader((data_all, labels_all), batchsize=args["batch_size"], shuffle=true);
 
@@ -73,7 +76,7 @@ for epoch ∈ 1:args["num_epochs"]
             y_real = D(x)
             z = randn(Float32, args["latent_dim"], this_batch) |> gpu;
             y_fake = D(G(z))
-            loss_D = -H_of_p(y_real) + E_of_H_of_p(y_real) - E_of_H_of_p(y_fake)
+            loss_D = -H_of_p(y_real) + E_of_H_of_p(y_real) - E_of_H_of_p(y_fake) + args["lambda"] * Flux.Losses.binarycrossentropy(y_real, y)
         end
         # Implement literal transcription of Eq.(7). Then do gradient ascent, i.e. minimize
         # -L(x, θ) by seeding the gradients with -1.0 instead of 1.0
@@ -102,6 +105,8 @@ for epoch ∈ 1:args["num_epochs"]
             E_real[(epoch - 1) * epoch_size + num_batch] = E_of_H_of_p(y_real)
             E_fake[(epoch - 1) * epoch_size + num_batch] = -E_of_H_of_p(y_fake)
 
+            xentropy = args["lambda"] * Flux.Losses.binarycrossentropy(y_real, y)
+
             y_real = y_real |> cpu;
             y_fake = y_fake |> cpu;
 
@@ -111,7 +116,8 @@ for epoch ∈ 1:args["num_epochs"]
             with_logger(tb_logger) do
                 @info "histograms" real=(hist_real.edges[1], hist_real.weights) log_step_increment=0
                 @info "histograms" fake=(hist_fake.edges[1], hist_fake.weights) log_step_increment=0
-                @info "Generator" img=fake_image(G, args, 16)
+                @info "Generator" img=fake_image(G, args, 16) log_step_increment=0
+                @info "output" crossentropy=xentropy
                 @info "output" H_real=-H_of_p(y_real) E_real=E_of_H_of_p(y_real) E_fake=E_of_H_of_p(y_fake)
             end
         end
@@ -120,8 +126,8 @@ for epoch ∈ 1:args["num_epochs"]
 end
 
 
-loader_one = DataLoader((data_all[:, :, :, 1:10000], zeros(Float32, 10000)), batchsize=10000, shuffle=false);
-loader_two = DataLoader((data_all[:, :, :, end-10000+1:end], ones(Float32, 10000)), batchsize=10000, shuffle=false);
+#loader_one = DataLoader((data_all[:, :, :, 1:10000], zeros(Float32, 10000)), batchsize=10000, shuffle=false);
+#loader_two = DataLoader((data_all[:, :, :, end-10000+1:end], ones(Float32, 10000)), batchsize=10000, shuffle=false);
 #(x,y) = first(train_loader)
 #y_real = D(x);
 #z = randn(Float32, args["latent_dim"], args["batch_size"]) |> gpu;
