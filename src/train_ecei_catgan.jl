@@ -18,8 +18,8 @@ println("Remember to set GKSwstype=nul")
 
 tb_logger = TBLogger("logs/testlog")
                     
-args = Dict("batch_size" => 1024, "activation" => "relu", "activation_alpha" => 0.2, 
-            "num_epochs" => 20, "latent_dim" => 32, "lambda" => 1e-3,
+args = Dict("batch_size" => 512, "activation" => "relu", "activation_alpha" => 0.2, 
+            "num_epochs" => 20, "latent_dim" => 64, "lambda" => 1e-3,
             "lr_D" => 0.0002, "lr_G" => 0.0002)
 
 with_logger(tb_logger) do
@@ -66,7 +66,7 @@ for epoch ∈ 1:args["num_epochs"]
     @show epoch
     for (x, y) ∈ train_loader
         this_batch = size(x)[end]
-        testmode!(G);
+        trainmode!(G);
         trainmode!(D);
         loss_D, back_D = Zygote.pullback(ps_D) do
             # Sample noise and generate a batch of fake data
@@ -81,8 +81,8 @@ for epoch ∈ 1:args["num_epochs"]
         Flux.update!(opt_D, ps_D, grads_D)
 
         # Train the generator
-        testmode!(D);
-        trainmode!(G);
+        #testmode!(D);
+        #trainmode!(G);
         loss_G, back_G = Zygote.pullback(ps_G) do
             z = randn(Float32, args["latent_dim"], this_batch) |> gpu;
             y_fake = D(G(z));
@@ -91,9 +91,9 @@ for epoch ∈ 1:args["num_epochs"]
         grads_G = back_G(one(loss_G));
         Flux.update!(opt_G, ps_G, grads_G)
 
-        testmode!(G);
-        testmode!(D);
         if num_batch % 50 == 0
+            testmode!(G);
+            testmode!(D);
             y_real = D(x);
             z = randn(Float32, args["latent_dim"], this_batch) |> gpu;
             y_fake = D(G(z));
@@ -101,6 +101,9 @@ for epoch ∈ 1:args["num_epochs"]
             H_real[(epoch - 1) * epoch_size + num_batch] = -H_of_p(y_real)
             E_real[(epoch - 1) * epoch_size + num_batch] = E_of_H_of_p(y_real)
             E_fake[(epoch - 1) * epoch_size + num_batch] = -E_of_H_of_p(y_fake)
+
+            y_real = y_real |> cpu;
+            y_fake = y_fake |> cpu;
 
             hist_real = fit(Histogram, y_real[:], nbins=100);
             hist_fake = fit(Histogram, y_fake[:], nbins=100);

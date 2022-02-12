@@ -52,11 +52,11 @@ function get_cat_discriminator(args)
                  BatchNorm(8, act),
                  Conv((3, 7), 8=>32, bias=false),  # Image is now 4x12x32
                  BatchNorm(32, act),
-                 Conv((3, 7), 32=>32, bias=false), # Image is now 2x6x32
-                 BatchNorm(32, act),
+                 Conv((3, 7), 32=>64, bias=false), # Image is now 2x6x32
+                 BatchNorm(64, act),
                  Flux.flatten,               # Image is now 384 wide 
                  Dropout(0.3),
-                 Dense(384, 2),
+                 Dense(768, 2),
                  x -> softmax(x));   
 end
 
@@ -92,11 +92,11 @@ function get_dc_generator_v2(args)
 
     return Chain(Dense(args["latent_dim"], 2048, relu, bias=false), 
                  x -> reshape(x, (4, 16, 32, :)), 
-                 BatchNorm(32, leakyrelu),
+                 BatchNorm(32, act),
                  ConvTranspose((3, 5), 32 => 32, bias=false),
-                 BatchNorm(32, leakyrelu),
+                 BatchNorm(32, act),
                  ConvTranspose((3, 5), 32 => 32, bias=false),
-                 BatchNorm(32, leakyrelu),
+                 BatchNorm(32, act),
                  Conv((3, 5), 32 => 1, pad=SamePad(), tanh))
 end
 
