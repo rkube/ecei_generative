@@ -6,10 +6,8 @@ using Flux.Data: DataLoader
 using Flux: onehotbatch
 using CUDA
 using Zygote
-using Printf
-using Plots
 using StatsBase
-using RollingFunctions
+using LinearAlgebra
 using Logging
 using TensorBoardLogger
 
@@ -20,7 +18,7 @@ println("Remember to set GKSwstype=nul")
 tb_logger = TBLogger("logs/testlog")
                     
 args = Dict("batch_size" => 1024, "activation" => "leakyrelu", "activation_alpha" => 0.2, 
-            "num_epochs" => 10, "latent_dim" => 64, "lambda" => 1e-2,
+            "num_epochs" => 10, "latent_dim" => 64, "lambda" => 1e-1,
             "lr_D" => 0.0002, "lr_G" => 0.0002)
 
 with_logger(tb_logger) do
@@ -110,8 +108,10 @@ for epoch ∈ 1:args["num_epochs"]
             y_real = y_real |> cpu;
             y_fake = y_fake |> cpu;
 
-            hist_real = fit(Histogram, y_real[:], nbins=100);
-            hist_fake = fit(Histogram, y_fake[:], nbins=100);
+            hist_real = fit(Histogram, y_real[:], 0.0:0.01:1.0);
+            hist_real = normalize(hist_real, mode=:density);
+            hist_fake = fit(Histogram, y_fake[:], 0.0:0.01:1.0);
+            hist_fake = normalize(hist_fake, mode=:density);
 
             with_logger(tb_logger) do
                 @info "histograms" real=(hist_real.edges[1], hist_real.weights) log_step_increment=0
