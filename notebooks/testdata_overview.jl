@@ -24,12 +24,12 @@ end
 
 # ╔═╡ 2dc5b778-579c-47dd-833a-195d2203d4f1
 begin
-	t_start = 2.0
-	t_end = 10.0
+	t_start = 4.0
+	t_end = 5.0
 	filter_f0 = 20000
 	filter_f1 = 40000
-	shotnr = 25978
-	dev = "GR"
+	shotnr = 25086
+	dev = "GT"
 	datadir = @sprintf "/home/rkube/gpfs/KSTAR/%06d" shotnr
 end
 
@@ -38,26 +38,26 @@ data_filt = load_from_hdf(t_start, t_end, filter_f0, filter_f1, datadir, shotnr,
 
 # ╔═╡ ac899c28-a8b5-4122-a093-b1f54589cfce
 begin
-	plot(data_filt[370_000:380_000, 12, 6])
-	plot!(data_filt[370_000:380_000, 12, 7])
-	plot!(data_filt[370_000:380_000, 12, 8])
+	plot(data_filt[12, 6, 370_000:380_000])
+	plot!(data_filt[12, 7, 370_000:380_000])
+	plot!(data_filt[12, 8, 370_000:380_000])
 end
 
 # ╔═╡ 4ee73e71-b92a-477a-81f5-1e33b56a1608
 begin
-	mode_t0 = 5.754
-	mode_t1 = 5.755
+	mode_t0 = 4.154
+	mode_t1 = 4.155
 	dt = 2e-6
 
-	frame_0 = convert(Int, round((mode_t0 - 2.0) / dt))
-	frame_1 = convert(Int, round((mode_t1 - 2.0) / dt))
+	frame_0 = convert(Int, round((mode_t0 - 4.0) / dt))
+	frame_1 = convert(Int, round((mode_t1 - 4.0) / dt))
 end
 
 # ╔═╡ c841e1b7-51ea-409d-b381-726ca3cf2cea
 frame_1 - frame_0
 
 # ╔═╡ 5193ed87-e280-41b4-952c-fd4fe83ce1b2
-contourf(data_filt[frame_0 + 16,:,:], clims=(-0.075,0.075), 
+contourf(data_filt[:,:, frame_0 + 18], clims=(-0.075,0.075), 
 	color=:bluesreds,
 	xlim=(1,8),
 	aspect_ratio=1)
@@ -68,13 +68,13 @@ begin
 	anim = @animate for frame ∈ frame_0:frame_1
 
 		title_str = @sprintf "%5d %s t=%8.6fs" shotnr dev ftime
-		contourf(data_filt[frame,:,:], clims=(-0.075,0.075), 
+		contourf(data_filt[:,:,frame], clims=(-0.075,0.075), 
 			color=:bluesreds,
 			aspect_ratio=1,
 			title=title_str)
 		ftime += dt
 	end
-	fname = @sprintf "%06d.gif" shotnr
+	fname = @sprintf "%06d_reorder.gif" shotnr
 	gif(anim, fname, fps=5)
 end
 

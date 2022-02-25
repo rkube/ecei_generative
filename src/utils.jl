@@ -1,6 +1,6 @@
 # Utility function
 
-export H_of_p, E_of_H_of_p, plot_fake, fake_image
+export plot_fake, fake_image, fake_image_3d
 
 using Plots
 using Statistics
@@ -21,7 +21,7 @@ end
 
 
 function fake_image(G, args, num_samples)
-    # Generate samples and cut out channel dimension
+    # Generate num_samples samples from the generator G, concatenated along horizontal dimension
     noise = randn(Float32, args["latent_dim"], num_samples) |> gpu;
     x_fake = G(noise) |> cpu;
     x_fake = x_fake[:, :, 1, :];
@@ -33,21 +33,30 @@ function fake_image(G, args, num_samples)
 end
 
 
-##marginalized entropy, Eq. (6)
-#function H_of_p(y)
-#    # Calculate Η_X[p(y|D)]. 
-#    # Average over the probability of the different examples in the current mini-batch
-#    mm = mean(y, dims=2)
-#    # Calculate the entropy by summing over the different classes that y can assume
-#    -sum(mm .* log.(mm .+ eps(eltype(y))))
-#end
-#
-## Conditional entropy, Eqs. (4) and (5)
-#function E_of_H_of_p(y)
-#    # Calculate expectation value of the entropy. Here we first calculate the entropy  Η
-#    # for individual samples before averaging.
-#    H = -y .* log.(y .+ eps(eltype(y)))
-#    # Now sum over the class dimension and average over the sample dimension
-#    sum(H) / size(H, 2)
-#end
+function fake_image_3d(G, args, num_samples)
+    # Generate samples sequences from the generator G.
+    #
+    # Image will be structured like this:
+    #
+    #    img_{1, t=1}   img_{1, t=2}    ...  img_{1, t=num_channels}
+    #    img_{2, t=1}   img_{t, t=2}    ...  img_{2, t=num_channels}
+    #    ...
+    #    img_{num_samples, t=1} img_{num_samples, t=2} ... img_{num_samples,t=num_channe;s}
+    #
+    # where each img is a 24x8 image
+
+    noise = randn(Float32, args["latent_dim"], num_samples) |> gpu;
+    x_fake = G(noise) |> cpu;
+    x_fake = x_fake[:, :, :, 1, :];
+    img_array = zeros(Gray, 24 * num_samples, 8 * args["num_channels"] );
+    for s in 1:num_samples
+        for c in 1:args["num_channels"]
+            img_array[24 * (s - 1) + 1:24 * s, 8 * (c - 1) + 1 : 8 * c] = colorview(Gray, x_fake[:, :, c, s])
+        end
+    end
+    img_array = map(clamp01nan, img_array);    
+end
+    
+
+
 

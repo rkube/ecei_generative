@@ -95,10 +95,8 @@ Keywords:
 * dt - Sampling Time. Default = 2e-6. In seconds.
 """
 function load_from_hdf(t_start, t_end, f_filt_lo, f_filt_hi, datadir, shotnr, dev; t_norm_0=-0.099, t_norm_1=-0.089, dt=2e-6)
-
-
     # Array that holds the raw data
-    raw_frames = zeros(5_000_000, 24, 8)
+    raw_frames = zeros(Float32, 24, 8, 5_000_000)
     # Construct the filename
     filename = @sprintf "ECEI.%06d.%s.h5" shotnr dev
 
@@ -119,22 +117,22 @@ function load_from_hdf(t_start, t_end, f_filt_lo, f_filt_hi, datadir, shotnr, de
 			#ch_idx = ch_to_idx(channel_str)
 			h5_var_name = "/ECEI/ECEI_" * channel_str * "/Voltage"
 			A = read(fid, h5_var_name)
-			raw_frames[:, ch_v, ch_h] = A[:] .* 1e-4
+			raw_frames[ch_v, ch_h, :] = A[:] .* 1e-4
 		end
 	end
 
     # Calculate offsets, normalize, etc.
 	# Normalize
-	offlev = median(raw_frames[tidx_norm, :, :], dims=1)
-	offstd = std(raw_frames[tidx_norm, :, :], dims=1)
+	offlev = median(raw_frames[:, :, tidx_norm], dims=3)
+	offstd = std(raw_frames[:, :, tidx_norm], dims=3)
 
 
-	data_norm = raw_frames[tidx_all, :, :] .- offlev;
+	data_norm = raw_frames[:, :, tidx_all] .- offlev;
 
-	siglev = median(data_norm, dims=1)
-	sigstd = std(data_norm, dims=1)
+	siglev = median(data_norm, dims=3)
+	sigstd = std(data_norm, dims=3)
 
-	data_norm = data_norm ./ mean(data_norm, dims=1) .- 1.0
+	data_norm = data_norm ./ mean(data_norm, dims=3) .- 1.0
 
     # Mark bad channels
 	ref = 100.0 .* offstd ./ siglev
@@ -144,14 +142,14 @@ function load_from_hdf(t_start, t_end, f_filt_lo, f_filt_hi, datadir, shotnr, de
 	bad_channels[offstd .< 1e-3] .= true
 	# Mark top saturated signals
 	bad_channels[sigstd .< 1e-3] .= true
-	bad_channels = dropdims(bad_channels, dims=1)
+	bad_channels = dropdims(bad_channels, dims=3)
 
     # Calculate the pixels that are to be used for interpolation of bad pixels
     ipol_dict = generate_ip_index_set(bad_channels)
     # Interpolate bad pixels. This should be done multi-threaded
-	data_norm_ip = similar(data_norm)
-	Threads.@threads for i in 1:size(data_norm)[1]
-		data_norm_ip[i,:,:] = ip_bad_values(data_norm[i,:,:], ipol_dict)
+    data_norm_ip = zeros(Float32, size(data_norm))
+	Threads.@threads for i in 1:size(data_norm)[3]
+		data_norm_ip[:,:,i] = ip_bad_values(data_norm[:,:,i], ipol_dict)
 	end
 
     # Apply bandpass filter.
@@ -160,10 +158,10 @@ function load_from_hdf(t_start, t_end, f_filt_lo, f_filt_hi, datadir, shotnr, de
 	designmethod = Butterworth(4)
 	my_filter = digitalfilter(responsetype, designmethod)
 
-	data_norm_filt = similar(data_norm)
-	Threads.@threads for ch_v in 1:size(data_norm_filt)[2]
-		for ch_h in 1:size(data_norm_filt)[3]
-			data_norm_filt[:, ch_v, ch_h] = filt(my_filter, data_norm_ip[:, ch_v, ch_h])
+    data_norm_filt = zeros(Float32, size(data_norm))
+	Threads.@threads for ch_v in 1:size(data_norm_filt)[1]
+		for ch_h in 1:size(data_norm_filt)[2]
+			data_norm_filt[ch_v, ch_h, :] = filt(my_filter, data_norm_ip[ch_v, ch_h, :])
 		end
 	end
 
