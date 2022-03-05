@@ -7,10 +7,10 @@ using Flux: onehotbatch
 using CUDA
 using Zygote
 using StatsBase
+using Random
 using LinearAlgebra
 using Logging
 
-#using TensorBoardLogger
 
 using PyCall
 using Wandb
@@ -32,7 +32,8 @@ with_logger(wb_logger) do
 end
 
 data_1 = load_from_hdf(2.6, 2.7, 35000, 50000, "/home/rkube/gpfs/KSTAR/025259", 25259, "GT");
-data_2 = load_from_hdf(5.9, 6.0, 5000, 20000, "/home/rkube/gpfs/KSTAR/025879", 25879, "GR");
+#data_2 = load_from_hdf(5.9, 6.0, 5000, 20000, "/home/rkube/gpfs/KSTAR/025879", 25879, "GR");
+data_2 = load_from_hdf(4.0, 4.1, 20000, 50000, "/home/rkube/gpfs/KSTAR/024562", 24562, "HT");
 data_all = cat(data_1, data_2, dims=1);
 
 # Put batch-dimension last
@@ -45,11 +46,22 @@ data_all = convert.(Float32, data_all);
 data_all = 2.0 * (data_all .- minimum(data_all)) / (maximum(data_all) - minimum(data_all)) .- 1.0 |> gpu;
 
 # Label the various classes
-labels_1 = onehotbatch(repeat([:a], size(data_1)[1]), [:a, :b]) |> gpu;
-labels_2 = onehotbatch(repeat([:b], size(data_1)[1]), [:a, :b]) |> gpu;
+labels_1 = onehotbatch(repeat([:a], size(data_1)[3]), [:a, :b]) |> gpu;
+labels_2 = onehotbatch(repeat([:b], size(data_1)[3]), [:a, :b]) |> gpu;
 labels_all = cat(labels_1, labels_2, dims=2);
 
-train_loader = DataLoader((data_all, labels_all), batchsize=args["batch_size"], shuffle=true);
+
+# Train / test split
+split_ratio = 0.8
+num_samples = size(data_all)[4]
+num_train = round(split_ratio * num_samples) |> Int
+idx_all = randperm(num_samples)      # Random indices for all samples
+idx_train = idx_all[1:num_train];
+idx_test = idx_all[num_train:end];
+
+
+loader_train = DataLoader((data_all[:, :, :, idx_train], labels_all[:, idx_train]), batchsize=args["batch_size"], shuffle=true);
+loader_test = DataLoader((data_all[:, :, :, idx_test], labels_all[:, idx_test]), batchsize=args["batch_size"], shuffle=true);
 
 D = get_cat_discriminator(args) |> gpu;
 G = get_dc_generator_v2(args) |> gpu;
@@ -60,17 +72,13 @@ opt_G = ADAM(args["lr_G"]);
 ps_D = Flux.params(D);
 ps_G = Flux.params(G);
 
-epoch_size = length(train_loader);
-#H_real = zeros(args["num_epochs"] * length(train_loader));
-#E_real = zeros(args["num_epochs"] * length(train_loader));
-#E_fake = zeros(args["num_epochs"] * length(train_loader));
-
+epoch_size = length(loader_train);
 
 total_batch = 1
 for epoch ∈ 1:args["num_epochs"]
     num_batch = 1;
     @show epoch
-    for (x, y) ∈ train_loader
+    for (x, y) ∈ loader_train 
         this_batch = size(x)[end]
         trainmode!(G);
         trainmode!(D);
@@ -98,17 +106,14 @@ for epoch ∈ 1:args["num_epochs"]
         Flux.update!(opt_G, ps_G, grads_G)
 
         if num_batch % 50 == 0
+            (x_test, y_test) = first(loader_test)
             testmode!(G);
             testmode!(D);
-            y_real = D(x);
+            y_real = D(x_test);
             z = randn(Float32, args["latent_dim"], this_batch) |> gpu;
             y_fake = D(G(z));
 
-            #H_real[(epoch - 1) * epoch_size + num_batch] = -H_of_p(y_real)
-            #E_real[(epoch - 1) * epoch_size + num_batch] = E_of_H_of_p(y_real)
-            #E_fake[(epoch - 1) * epoch_size + num_batch] = -E_of_H_of_p(y_fake)
-
-            xentropy = args["lambda"] * Flux.Losses.binarycrossentropy(y_real, y)
+            xentropy = args["lambda"] * Flux.Losses.binarycrossentropy(y_real, y_test)
 
             y_real = y_real |> cpu;
             y_fake = y_fake |> cpu;
@@ -136,7 +141,7 @@ end
 
 #loader_one = DataLoader((data_all[:, :, :, 1:10000], zeros(Float32, 10000)), batchsize=10000, shuffle=false);
 #loader_two = DataLoader((data_all[:, :, :, end-10000+1:end], ones(Float32, 10000)), batchsize=10000, shuffle=false);
-#(x,y) = first(train_loader)
+#(x,y) = first(loader_train)
 #y_real = D(x);
 #z = randn(Float32, args["latent_dim"], args["batch_size"]) |> gpu;
 #y_fake = D(G(z));

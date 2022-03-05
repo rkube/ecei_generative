@@ -11,7 +11,7 @@ gemerator = ecei_generative.vanilla_generator() |> gpu;
 
 """
 
-export get_vanilla_discriminator, get_dc_discriminator, get_cat_discriminator,  get_vanilla_generator, get_dc_generator, get_dc_generator_v2, get_cat_discriminator_3d, get_generator_3d
+export get_vanilla_discriminator, get_dc_discriminator, get_cat_discriminator,  get_vanilla_generator, get_dc_generator, get_dc_generator_v2, get_cat_discriminator_3d, get_generator_3d 
 
 
 function get_vanilla_discriminator(n_features)
@@ -68,18 +68,31 @@ function get_cat_discriminator_3d(args)
     else
         act = getfield(NNlib, Symbol(args["activation"]));
     end
+
+    # 4 layers are hard-coded
+    # Compile list of the transpose-conv filter sizes for each of the four layers
+    filter_size_list = [(args["filter_size_H"][k], args["filter_size_W"][k], args["filter_size_D"][k]) for k in [1,2,3,4]]
+
+    # Calculate the final size of the layers
+    final_size_H = reduce((W, S) -> conv_layer_size(W, S...),
+                          [(w, 1) for w in args["filter_size_H"]], init=24)
+    final_size_W = reduce((W, S) -> conv_layer_size(W, S...),
+                          [(w, 1) for w in args["filter_size_W"]], init=8)
+    final_size_D = reduce((W, S) -> conv_layer_size(W, S...),
+                          [(w, 1) for w in args["filter_size_D"]], init=args["num_depth"])
+
     
     # Size annotations are for dim(x)[3] = 10, i.e. num_channels=10
-    return Chain(Conv((3, 4, 6), 1=>8, bias=false),         # Image is now 22x5x5x8
-                 BatchNorm(8, act),
-                 Conv((5, 3, 3), 8=>32, bias=false),        # Image is now 18x3x3x32
-                 BatchNorm(32, act),
-                 Conv((5, 3, 3), 32=>32, bias=false),       # Image is now 14x1x1x32
-                 BatchNorm(32, act),
-                 Conv((7, 1, 1), 32=>64, bias=false),       # Image is now 8x1x1x64
-                 BatchNorm(64, act),
+    return Chain(Conv(filter_size_list[1], 1=>args["num_channels"][1], bias=false),         
+                 BatchNorm(args["num_channels"][1], act),
+                 Conv(filter_size_list[2], args["num_channels"][1] => args["num_channels"][2], bias=false),        
+                 BatchNorm(args["num_channels"][2], act),
+                 Conv(filter_size_list[3], args["num_channels"][2] => args["num_channels"][3], bias=false),     
+                 BatchNorm(args["num_channels"][3], act),
+                 Conv(filter_size_list[4], args["num_channels"][3] => args["num_channels"][4], bias=false),    
+                 BatchNorm(args["num_channels"][4], act),
                  Flux.flatten,
-                 Dense(512, 2),
+                 Dense(final_size_H * final_size_W * final_size_D * args["num_channels"][4], args["num_classes"]),
                  x -> softmax(x));
 end
 
@@ -131,15 +144,31 @@ function get_generator_3d(args)
         act = getfield(NNlib, Symbol(args["activation"]));
     end
 
+    # 4 layers are hard-coded
+    # Compile list of the transpose-conv filter sizes for each of the four layers
+    filter_size_list = [(args["filter_size_H"][k], args["filter_size_W"][k], args["filter_size_D"][k]) for k in [1,2,3,4]]
+
+    # Calculate the final size of the layers
+    init_size_H = reduce((W, S) -> conv_layer_size(W, S...),
+                          [(w, 1) for w in args["filter_size_H"]], init=24)
+    init_size_W = reduce((W, S) -> conv_layer_size(W, S...),
+                          [(w, 1) for w in args["filter_size_W"]], init=8)
+    init_size_D = reduce((W, S) -> conv_layer_size(W, S...),
+                          [(w, 1) for w in args["filter_size_D"]], init=args["num_depth"])
+
+
+
     return Chain(Dense(args["latent_dim"], 512, relu, bias=false),
-                 Dense(512, 512, act, bias=false),
-                 x -> reshape(x, (8, 1, 1, 64, :)),
-                 ConvTranspose((7, 1, 1), 64=>32, bias=false),
-                 BatchNorm(32, act),
-                 ConvTranspose((5, 3, 3), 32=>32, bias=false),
-                 BatchNorm(32, act),
-                 ConvTranspose((5, 3, 3), 32=>8, bias=false),
-                 BatchNorm(8, act),
-                 ConvTranspose((3, 4, 6), 8=>1, bias=false))
+                 # First layer is from hard-coded 512 to the initial size of the image
+                 Dense(512, init_size_H * init_size_W * init_size_D * args["num_channels"][4], act, bias=false),
+                 # Re-shape to be used as input for transpose convolutions
+                 x -> reshape(x, (init_size_H, init_size_W, init_size_D, args["num_channels"][4], :)),
+                 ConvTranspose(filter_size_list[4], args["num_channels"][4] => args["num_channels"][3], bias=false),
+                 BatchNorm(args["num_channels"][3], act),
+                 ConvTranspose(filter_size_list[3], args["num_channels"][3] => args["num_channels"][2], bias=false),
+                 BatchNorm(args["num_channels"][2], act),
+                 ConvTranspose(filter_size_list[2], args["num_channels"][2] => args["num_channels"][1], bias=false),
+                 BatchNorm(args["num_channels"][1], act),
+                 ConvTranspose(filter_size_list[1], args["num_channels"][1] => 1, bias=false))
 end
 

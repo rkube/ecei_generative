@@ -75,7 +75,7 @@ begin
 		ftime += dt
 	end
 	fname = @sprintf "%06d_reorder.gif" shotnr
-	gif(anim, fname, fps=5)
+	#gif(anim, fname, fps=5)
 end
 
 # ╔═╡ Cell order:

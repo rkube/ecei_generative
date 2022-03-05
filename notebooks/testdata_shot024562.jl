@@ -27,9 +27,9 @@ begin
 	t_start = 4.0
 	t_end = 5.0
 	filter_f0 = 20000
-	filter_f1 = 40000
-	shotnr = 25086
-	dev = "GT"
+	filter_f1 = 50000
+	shotnr = 24562
+	dev = "HT"
 	datadir = @sprintf "/home/rkube/gpfs/KSTAR/%06d" shotnr
 end
 
@@ -45,11 +45,12 @@ end
 
 # ╔═╡ 4ee73e71-b92a-477a-81f5-1e33b56a1608
 begin
-	mode_t0 = 4.154
-	mode_t1 = 4.155
 	dt = 2e-6
+	mode_t0 = 4.001
+	mode_t1 = 4.003
+	
 
-	frame_0 = convert(Int, round((mode_t0 - 4.0) / dt))
+	frame_0 = convert(Int, round((mode_t0 - 4.0) / dt)) 
 	frame_1 = convert(Int, round((mode_t1 - 4.0) / dt))
 end
 
@@ -65,7 +66,7 @@ contourf(data_filt[:,:, frame_0 + 18], clims=(-0.075,0.075),
 # ╔═╡ d91f1d9b-7269-4225-ad94-3853831fe617
 begin
 	ftime = mode_t0
-	anim = @animate for frame ∈ frame_0:frame_1
+	anim = @animate for frame ∈ frame_0:(frame_0+20)
 
 		title_str = @sprintf "%5d %s t=%8.6fs" shotnr dev ftime
 		contourf(data_filt[:,:,frame], clims=(-0.075,0.075), 
@@ -75,8 +76,14 @@ begin
 		ftime += dt
 	end
 	fname = @sprintf "%06d_reorder.gif" shotnr
-	gif(anim, fname, fps=5)
+	gif(anim, fname, fps=1)
 end
+
+# ╔═╡ d17e524f-c0f1-47a3-80a5-52b40caa7e6d
+layersize(W::Int, K::Int, S::Int) = floor((W-K)/S)+1 |> Int
+
+# ╔═╡ 54e24890-2059-4ea2-8e38-0832907a7953
+layersize(24, 3, 1)
 
 # ╔═╡ Cell order:
 # ╠═51ca7818-6caf-11ec-341c-79ded0af6756
@@ -89,3 +96,5 @@ end
 # ╠═c841e1b7-51ea-409d-b381-726ca3cf2cea
 # ╠═5193ed87-e280-41b4-952c-fd4fe83ce1b2
 # ╠═d91f1d9b-7269-4225-ad94-3853831fe617
+# ╠═d17e524f-c0f1-47a3-80a5-52b40caa7e6d
+# ╠═54e24890-2059-4ea2-8e38-0832907a7953
