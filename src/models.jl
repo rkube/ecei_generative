@@ -81,18 +81,20 @@ function get_cat_discriminator_3d(args)
     final_size_D = reduce((W, S) -> conv_layer_size(W, S...),
                           [(w, 1) for w in args["filter_size_D"]], init=args["num_depth"])
 
-    
+    final_size = final_size_H * final_size_W * final_size_D * args["num_channels"][4]
+
     # Size annotations are for dim(x)[3] = 10, i.e. num_channels=10
-    return Chain(Conv(filter_size_list[1], 1=>args["num_channels"][1], bias=false),         
-                 BatchNorm(args["num_channels"][1], act),
-                 Conv(filter_size_list[2], args["num_channels"][1] => args["num_channels"][2], bias=false),        
-                 BatchNorm(args["num_channels"][2], act),
-                 Conv(filter_size_list[3], args["num_channels"][2] => args["num_channels"][3], bias=false),     
-                 BatchNorm(args["num_channels"][3], act),
-                 Conv(filter_size_list[4], args["num_channels"][3] => args["num_channels"][4], bias=false),    
-                 BatchNorm(args["num_channels"][4], act),
-                 Flux.flatten,
-                 Dense(final_size_H * final_size_W * final_size_D * args["num_channels"][4], args["num_classes"]),
+    return Chain(Conv(filter_size_list[1], 1=>args["num_channels"][1], act, bias=false),
+                 #BatchNorm(args["num_channels"][1], act),
+                 Conv(filter_size_list[2], args["num_channels"][1] => args["num_channels"][2], act, bias=false),        
+                 #BatchNorm(args["num_channels"][2], act),
+                 Conv(filter_size_list[3], args["num_channels"][2] => args["num_channels"][3], act, bias=false),     
+                 #BatchNorm(args["num_channels"][3], act),
+                 Conv(filter_size_list[4], args["num_channels"][3] => args["num_channels"][4], act, bias=false),
+                 Flux.flatten, 
+                 MinibatchDiscrimination(final_size, args["fc_size"], 32),
+                 #BatchNorm(args["num_channels"][4], act),
+                 Dense(final_size + args["fc_size"], args["num_classes"]),
                  x -> softmax(x));
 end
 
@@ -156,19 +158,14 @@ function get_generator_3d(args)
     init_size_D = reduce((W, S) -> conv_layer_size(W, S...),
                           [(w, 1) for w in args["filter_size_D"]], init=args["num_depth"])
 
-
-
     return Chain(Dense(args["latent_dim"], 512, relu, bias=false),
                  # First layer is from hard-coded 512 to the initial size of the image
-                 Dense(512, init_size_H * init_size_W * init_size_D * args["num_channels"][4], act, bias=false),
+                 Dense(512, init_size_H * init_size_W * init_size_D * args["num_channels"][4] * 2, relu, bias=false),
                  # Re-shape to be used as input for transpose convolutions
-                 x -> reshape(x, (init_size_H, init_size_W, init_size_D, args["num_channels"][4], :)),
-                 ConvTranspose(filter_size_list[4], args["num_channels"][4] => args["num_channels"][3], bias=false),
-                 BatchNorm(args["num_channels"][3], act),
-                 ConvTranspose(filter_size_list[3], args["num_channels"][3] => args["num_channels"][2], bias=false),
-                 BatchNorm(args["num_channels"][2], act),
-                 ConvTranspose(filter_size_list[2], args["num_channels"][2] => args["num_channels"][1], bias=false),
-                 BatchNorm(args["num_channels"][1], act),
-                 ConvTranspose(filter_size_list[1], args["num_channels"][1] => 1, bias=false))
+                 x -> reshape(x, (init_size_H, init_size_W, init_size_D, args["num_channels"][4] * 2, :)),
+                 ConvTranspose(filter_size_list[4], args["num_channels"][4] * 2 => 2 * args["num_channels"][3], relu, bias=false),
+                 ConvTranspose(filter_size_list[3], args["num_channels"][3] * 2 => 2 * args["num_channels"][2], relu, bias=false),
+                 ConvTranspose(filter_size_list[2], args["num_channels"][2] * 2 => 2 * args["num_channels"][1], relu, bias=false),
+                 ConvTranspose(filter_size_list[1], args["num_channels"][1] * 2 => 1, tanh, bias=false))
 end
 

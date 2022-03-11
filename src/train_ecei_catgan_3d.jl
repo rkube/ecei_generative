@@ -10,6 +10,7 @@ using Random
 using StatsBase
 using LinearAlgebra
 using Logging
+using JSON
 
 using PyCall
 using Wandb
@@ -17,25 +18,30 @@ using Wandb
 using ecei_generative
 
 # Set up logging and pycall
-wb_logger = WandbLogger(project="ecei_generative", entity="rkube")
+
+open("config.json", "r") do io
+    global args = JSON.parse(io)
+end
+
+
+#args = Dict("batch_size" => 128, "activation" => "leakyrelu", "activation_alpha" => 0.2, 
+#            "num_epochs" => 100, "latent_dim" => 128, "lambda" => 1e-2,
+#            "num_classes" => 2,
+#            "num_depth" => 7,
+#            "filter_size_H" => [3, 5, 7, 9],
+#            "filter_size_W" => [3, 3, 3, 1],
+#            "filter_size_D" => [5, 3, 1, 1],
+#            "fc_size" => 64,
+#            "num_channels" => [16, 32, 64, 64],
+#            "opt_D" => "ADAM",
+#            "opt_G" => "ADAM",
+#            "lr_D" => 0.0001, "lr_G" => 0.002,
+#            "beta_D" => [0.5, 0.999],
+#            "beta_G" => [0.5, 0.999])
+
+wb_logger = WandbLogger(project="ecei_generative", entity="rkube", config=args)
 np = pyimport("numpy")                    
 
-args = Dict("batch_size" => 128, "activation" => "leakyrelu", "activation_alpha" => 0.2, 
-            "num_epochs" => 100, "latent_dim" => 128, "lambda" => 0e-2,
-            "num_classes" => 2,
-            "num_depth" => 7,
-            "filter_size_H" => [3, 5, 7, 9],
-            "filter_size_W" => [3, 3, 3, 1],
-            "filter_size_D" => [5, 3, 1, 1],
-            "fc_size" => 128,
-            "num_channels" => [8, 16, 32, 32],
-            "opt_D" => "ADAM",
-            "opt_G" => "ADAM",
-            "lr_D" => 0.001, "lr_G" => 0.001)
-
-with_logger(wb_logger) do
-    @info "hyperparameters" args
-end
 
 # num_depth is the number of ecei frames bundled together into a single example
 data_1 = load_from_hdf(2.6, 2.7, 35000, 50000, "/home/rkube/gpfs/KSTAR/025259", 25259, "GT");
@@ -82,8 +88,8 @@ loader_test = DataLoader((data_all[:, :, :, :, idx_test], labels_all[:, idx_test
 D = get_cat_discriminator_3d(args) |> gpu;
 G = get_generator_3d(args) |> gpu;
 
-opt_D = getfield(Flux, Symbol(args["opt_D"]))(args["lr_D"]);
-opt_G = getfield(Flux, Symbol(args["opt_G"]))(args["lr_G"]);
+opt_D = getfield(Flux, Symbol(args["opt_D"]))(args["lr_D"], Tuple(args["beta_D"]));
+opt_G = getfield(Flux, Symbol(args["opt_G"]))(args["lr_G"], Tuple(args["beta_D"]));
 
 ps_D = Flux.params(D);
 ps_G = Flux.params(G);
@@ -97,7 +103,6 @@ for epoch ∈ 1:args["num_epochs"]
     for (x, y) ∈ loader_train
         this_batch = size(x)[end]
         # Train the discriminator
-        #trainmode!(G);
         testmode!(G);
         trainmode!(D);
         loss_D, back_D = Zygote.pullback(ps_D) do
@@ -140,14 +145,6 @@ for epoch ∈ 1:args["num_epochs"]
             grads_G1 = grads_G[ps_G[1]][:] |> cpu;
             grads_G4 = grads_G[ps_G[4]][:] |> cpu;
 
-            # Use Numpy histograms for wandb
-            # Fetch gradients for top and bottom layer of the generator and discriminator
-            #hist_gradD_1 = np.histogram(grads_D1[:], -1.0:0.01:1.0, density=true);
-            #hist_gradD_4 = np.histogram(grads_D4[:], -1.0:0.01:1.0, density=true); 
-            #hist_gradG_1 = np.histogram(grads_G1[:], -1.0:0.01:1.0, density=true);
-            #hist_gradG_4 = np.histogram(grads_G4[:], -1.0:0.01:1.0, density=true);
-            #hist_real = np.histogram(y_real[:], 0.0:0.01:1.0, density=true);
-            #hist_fake = np.histogram(y_fake[:], 0.0:0.01:1.0, density=true);
             img = fake_image_3d(G, args, 16);
             img = convert(Array{Float32}, img);
 
@@ -169,4 +166,4 @@ for epoch ∈ 1:args["num_epochs"]
     end
 end
 
-
+close(wb_logger)

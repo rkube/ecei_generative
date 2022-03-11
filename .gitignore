@@ -1,0 +1,5 @@
+*.png
+notebooks/*.gif
+data/*
+wandb/*
+*.swp
