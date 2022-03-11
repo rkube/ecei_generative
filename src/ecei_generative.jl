@@ -10,5 +10,6 @@ include("lossfuns.jl")
 include("training.jl")
 # Utility functions
 include("utils.jl")
-
+# Additional Layers
+include("layers.jl")
 end # module

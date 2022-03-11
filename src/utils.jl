@@ -71,3 +71,7 @@ conv_layer_size(W, K, S) = floor((W-K)/S) + 1|> Int
 # S: Stride
 # No padding
 trconv_layer_size(W, K, S) = floor((W-1)*S) + K |> Int
+
+
+
+
