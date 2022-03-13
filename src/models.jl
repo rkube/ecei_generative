@@ -92,7 +92,7 @@ function get_cat_discriminator_3d(args)
                  #BatchNorm(args["num_channels"][3], act),
                  Conv(filter_size_list[4], args["num_channels"][3] => args["num_channels"][4], act, bias=false),
                  Flux.flatten, 
-                 MinibatchDiscrimination(final_size, args["fc_size"], 32),
+                 MinibatchDiscrimination(final_size, args["fc_size"], args["mbatch_hidden"]),
                  #BatchNorm(args["num_channels"][4], act),
                  Dense(final_size + args["fc_size"], args["num_classes"]),
                  x -> softmax(x));

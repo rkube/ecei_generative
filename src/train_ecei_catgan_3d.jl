@@ -24,21 +24,6 @@ open("config.json", "r") do io
 end
 
 
-#args = Dict("batch_size" => 128, "activation" => "leakyrelu", "activation_alpha" => 0.2, 
-#            "num_epochs" => 100, "latent_dim" => 128, "lambda" => 1e-2,
-#            "num_classes" => 2,
-#            "num_depth" => 7,
-#            "filter_size_H" => [3, 5, 7, 9],
-#            "filter_size_W" => [3, 3, 3, 1],
-#            "filter_size_D" => [5, 3, 1, 1],
-#            "fc_size" => 64,
-#            "num_channels" => [16, 32, 64, 64],
-#            "opt_D" => "ADAM",
-#            "opt_G" => "ADAM",
-#            "lr_D" => 0.0001, "lr_G" => 0.002,
-#            "beta_D" => [0.5, 0.999],
-#            "beta_G" => [0.5, 0.999])
-
 wb_logger = WandbLogger(project="ecei_generative", entity="rkube", config=args)
 np = pyimport("numpy")                    
 
