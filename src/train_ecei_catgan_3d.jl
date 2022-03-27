@@ -24,14 +24,14 @@ open("config.json", "r") do io
 end
 
 
-wb_logger = WandbLogger(project="ecei_generative", entity="rkube", config=args)
+wb_logger = WandbLogger(project="ecei_catgan_3class", entity="rkube", config=args)
 np = pyimport("numpy")                    
 
 
 # num_depth is the number of ecei frames bundled together into a single example
 data_1 = load_from_hdf(2.6, 2.7, 35000, 50000, "/home/rkube/gpfs/KSTAR/025259", 25259, "GT");
 #data_2 = load_from_hdf(5.9, 6.0, 5000, 20000, "/home/rkube/gpfs/KSTAR/025879", 25879, "GR");
-data_3 = load_from_hdf(4.1, 4.2, 20000, 50000, "/home/rkube/gpfs/KSTAR/024562", 24562, "HT");
+data_3 = load_from_hdf(2.6, 2.7, 5000, 9000, "/home/rkube/gpfs/KSTAR/022289", 22289, "GT");
 
 # Re-order data_1 and data_2 to have multiple channels per example
 num_samples = size(data_1)[end] ÷ args["num_depth"];
@@ -54,8 +54,8 @@ data_all = reshape(data_all, (size(data_all)[1], size(data_all)[2], size(data_al
 data_all = 2.0 * (data_all .- minimum(data_all)) / (maximum(data_all) - minimum(data_all)) .- 1.0 |> gpu;
 
 # Label the various classes
-labels_1 = onehotbatch(repeat([:a], size(data_1)[4]), [:a, :b]) |> gpu;
-labels_3 = onehotbatch(repeat([:b], size(data_3)[4]), [:a, :b]) |> gpu;
+labels_1 = onehotbatch(repeat([:a], size(data_1)[4]), [:a, :b, :c]) |> gpu;
+labels_3 = onehotbatch(repeat([:b], size(data_3)[4]), [:a, :b, :c]) |> gpu;
 labels_all = cat(labels_1, labels_3, dims=2);
 
 
@@ -81,9 +81,8 @@ ps_G = Flux.params(G);
 
 epoch_size = length(loader_train);
 
-total_batch = 1
+num_batch = 1
 for epoch ∈ 1:args["num_epochs"]
-    num_batch = 1;
     @show epoch
     for (x, y) ∈ loader_train
         this_batch = size(x)[end]
@@ -133,21 +132,20 @@ for epoch ∈ 1:args["num_epochs"]
             img = fake_image_3d(G, args, 16);
             img = convert(Array{Float32}, img);
 
-            log(wb_logger, Dict("batch" => total_batch, 
-                                "crossentropy" => xentropy,
-                                "hist_gradD_1" => Wandb.Histogram(grads_D1),
-                                "hist_gradD_4" => Wandb.Histogram(grads_D4),
-                                "hist_gradG_1" => Wandb.Histogram(grads_G1),
-                                "hist_gradG_4" => Wandb.Histogram(grads_D4),
-                                "hist y_real" => Wandb.Histogram(y_real),
-                                "hist y_fake" => Wandb.Histogram(y_fake),
-                                "H_real" => -H_of_p(y_real),
-                                "E_real" => E_of_H_of_p(y_real),
-                                "E_fake" => E_of_H_of_p(y_fake),
-                                "Generator" => Wandb.Image(img)))
+            Wandb.log(wb_logger, Dict("batch" => num_batch, 
+                                      "crossentropy" => xentropy,
+                                      "hist_gradD_1" => Wandb.Histogram(grads_D1),
+                                      "hist_gradD_4" => Wandb.Histogram(grads_D4),
+                                      "hist_gradG_1" => Wandb.Histogram(grads_G1),
+                                      "hist_gradG_4" => Wandb.Histogram(grads_D4),
+                                      "hist y_real" => Wandb.Histogram(y_real),
+                                      "hist y_fake" => Wandb.Histogram(y_fake),
+                                      "H_real" => -H_of_p(y_real),
+                                      "E_real" => E_of_H_of_p(y_real),
+                                      "E_fake" => E_of_H_of_p(y_fake),
+                                      "Generator" => Wandb.Image(img)))
         end
-        num_batch += 1;
-        global total_batch += 1;
+        global num_batch += 1;
     end
 end
 
