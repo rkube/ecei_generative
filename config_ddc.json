@@ -1,0 +1,19 @@
+{
+    "batch_size": 128, 
+    "activation": "relu", 
+    "activation_alpha": 0.2, 
+    "num_epochs": 20, 
+    "num_classes": 3, 
+    "num_depth": 5, 
+    "filter_size_H": [3, 3], 
+    "filter_size_W": [3, 5], 
+    "filter_size_D": [3, 3], 
+    "maxpool_size_H": [1, 1],
+    "maxpool_size_W": [1, 1],
+    "maxpool_size_D": [1, 1],
+    "fc_size": 100,
+    "num_channels": [32, 64], 
+    "opt": "ADAM", 
+    "lr": 0.001, 
+    "beta": [0.9, 0.999] 
+}

@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.18.1
+# v0.18.4
 
 using Markdown
 using InteractiveUtils
@@ -24,8 +24,8 @@ end
 
 # ╔═╡ 2dc5b778-579c-47dd-833a-195d2203d4f1
 begin
-	t_start = 2.0
-	t_end = 3.0
+	t_start = 2.6
+	t_end = 3.7
 	filter_f0 = 30000
 	filter_f1 = 50000
 	shotnr = 25259
