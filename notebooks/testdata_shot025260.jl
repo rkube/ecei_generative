@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.18.1
+# v0.18.4
 
 using Markdown
 using InteractiveUtils
@@ -24,11 +24,11 @@ end
 
 # ╔═╡ 2dc5b778-579c-47dd-833a-195d2203d4f1
 begin
-	t_start = 2.0
-	t_end = 3.0
-	filter_f0 = 5000
-	filter_f1 = 9000
-	shotnr = 22289
+	t_start = 5.0
+	t_end = 6.0
+	filter_f0 = 35000
+	filter_f1 = 50000
+	shotnr = 25260
 	dev = "GT"
 	datadir = @sprintf "/home/rkube/gpfs/KSTAR/%06d" shotnr
 end
@@ -46,12 +46,11 @@ end
 # ╔═╡ 4ee73e71-b92a-477a-81f5-1e33b56a1608
 begin
 	dt = 2e-6
-	mode_t0 = 2.716
-	mode_t1 = 2.717
-	
+	mode_t0 = 5.006
+	mode_t1 = 5.007
 
-	frame_0 = convert(Int, round((mode_t0 - 2.0) / dt)) 
-	frame_1 = convert(Int, round((mode_t1 - 2.0) / dt))
+	frame_0 = convert(Int, round((mode_t0 - t_start) / dt)) 
+	frame_1 = convert(Int, round((mode_t1 - t_start) / dt))
 end
 
 # ╔═╡ c841e1b7-51ea-409d-b381-726ca3cf2cea
@@ -75,15 +74,9 @@ begin
 			title=title_str)
 		ftime += dt
 	end
-	fname = @sprintf "%06d_reorder.gif" shotnr
+	fname = @sprintf "%06d.gif" shotnr
 	gif(anim, fname, fps=5)
 end
-
-# ╔═╡ d17e524f-c0f1-47a3-80a5-52b40caa7e6d
-layersize(W::Int, K::Int, S::Int) = floor((W-K)/S)+1 |> Int
-
-# ╔═╡ 54e24890-2059-4ea2-8e38-0832907a7953
-layersize(24, 3, 1)
 
 # ╔═╡ Cell order:
 # ╠═51ca7818-6caf-11ec-341c-79ded0af6756
@@ -96,5 +89,3 @@ layersize(24, 3, 1)
 # ╠═c841e1b7-51ea-409d-b381-726ca3cf2cea
 # ╠═5193ed87-e280-41b4-952c-fd4fe83ce1b2
 # ╠═d91f1d9b-7269-4225-ad94-3853831fe617
-# ╠═d17e524f-c0f1-47a3-80a5-52b40caa7e6d
-# ╠═54e24890-2059-4ea2-8e38-0832907a7953
