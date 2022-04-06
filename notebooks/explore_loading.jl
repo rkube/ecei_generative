@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.17.3
+# v0.18.4
 
 using Markdown
 using InteractiveUtils
@@ -10,50 +10,48 @@ begin
 	using HDF5
 	using Printf
 	using Statistics
+	using StatsBase
 	using Interpolations
 	using DSP
 end
 
-# ╔═╡ d052875d-442e-4f58-9bba-5ff364ca614d
-function ch_to_idx(chname)
-	# chname is something like GT1207
-	# GT is the device name
-	# 12 is the vertical channel number
-	# 7 is the horizontal channel number
-	dev_name = chname[1:2]
-	ch_v = parse(Int64, chname[3:4])
-	ch_h = parse(Int64, chname[5:6])
-
-	idx = 8 * (ch_v - 1) + ch_h
-end
-
-# ╔═╡ 7edd82aa-3ab0-4c28-89af-5acf687b036a
-# Channels span indices 1 to 192
-[ch_to_idx(@sprintf "GT%02d%02d" s t)  for s in 1:24 for t in 1:8] == 1:192
-
 # ╔═╡ f440bdf6-1019-4c1b-8b10-d0cbb0c15411
 begin
+	shotnr = 25259
+	dev = "GT"
 	t_start = 2.0
-	t_end = 10.0
+	t_end = 3.0
 	dt = 2e-6 # Sampling frequency
 	t_norm_0 = -0.099 # Start of index used for normalization
 	t_norm_1 = -0.089 # End of index used for normalization	
 	datadir = "/home/rkube/gpfs/KSTAR/025259/"
-	filename = "ECEI.025259.GT.h5"
+    filename = @sprintf "ECEI.%06d.%s.h5" shotnr dev
 	fid = h5open(joinpath(datadir, filename), "r")
+end
+
+# ╔═╡ 27920740-b434-47b3-8a8c-8a36332f4a6b
+begin
+	# Process TriggerTime and build timebase vectors
+    TriggerTime = read(attributes(fid["/ECEI"])["TriggerTime"]) # Time at trigger
+    tbase = (1:5_000_000) .* dt .+ TriggerTime[1] # Time-base used for samples
+    tidx_norm = (tbase .> t_norm_0) .& (tbase .< t_norm_1) # Indices that are to be used for normalization
+    tidx_all = (tbase .> t_start) .& (tbase .< t_end) # Indices for data that will be returned
+    @show sum(tidx_norm), sum(tidx_all)
 end
 
 # ╔═╡ 0f90523a-8c0e-4fa1-8c7b-f32f29f04151
 begin
-	dev = "GT"
-	all_data = zeros(5_000_000, 24, 8)
+	# all_data = zeros(5_000_000, 24, 8)
+    frames_norm = zeros(sum(tidx_norm), 24, 8)
+    frames_raw = zeros(sum(tidx_all), 24, 8)
 	for ch_v in 1:24
 		for ch_h in 1:8
 			channel_str = @sprintf "%s%02d%02d" dev ch_v ch_h
-			#ch_idx = ch_to_idx(channel_str)
 			h5var_name = "/ECEI/ECEI_" * channel_str * "/Voltage"
 			A = read(fid, h5var_name)
-			all_data[:, ch_v, ch_h] = A[:] .* 1e-4
+			# all_data[:, ch_v, ch_h] = A[:] .* 1e-4
+            frames_norm[:, ch_v, ch_h] = A[tidx_norm] * 1e-4
+            frames_raw[:, ch_v, ch_h] = A[tidx_all] * 1e-4
 			#res = sum(A) / size(A)[1]
 		end
 	end
@@ -61,46 +59,31 @@ begin
 end
 
 # ╔═╡ b3b4fb21-71dc-4cc1-a50a-3887b19b1a25
-contourf(all_data[4_000_000,:,:])
-
-# ╔═╡ cbdee39b-9b78-4aa6-97f0-7ebcd0a9a2be
-# Create a time base
-begin
-	TriggerTime = read(attributes(fid["/ECEI"])["TriggerTime"]) # Time at trigger
-	tbase = (1:5_000_000) .* dt .+ TriggerTime[1] # Time-base used for samples
-	tidx_norm = (tbase .> t_norm_0) .& (tbase .< t_norm_1) # Indices that are to be used for normalization
-	tidx_all = (tbase .> t_start) .& (tbase .< t_end)
-end
-
-
-# ╔═╡ d536b4f0-6486-43ab-ad08-8b58b8a6bc47
-sum(tidx_all)
-
-# ╔═╡ d75f56b4-bf0e-47f9-a294-8ae783f46f30
-TriggerTime
+contourf(frames_raw[4000,:,:])
 
 # ╔═╡ cf370d7e-1804-4e08-8e03-4f0e272cd1e4
 begin
-	plot(tbase[1:100:end], all_data[1:100:end, 12, 4])
-	plot!(tbase[1:100:end], all_data[1:100:end, 12, 5])
+	plot(tbase[tidx_all][1:100:end], frames_raw[1:100:end, 12, 4])
+	plot!(tbase[tidx_all][1:100:end], frames_raw[1:100:end, 12, 5])
 end
 
 # ╔═╡ 0ad2fc36-9760-4dd6-8dbd-706b83f89427
 begin
 	# Normalize
-	offlev = median(all_data[tidx_norm, :, :], dims=1)
-	offstd = std(all_data[tidx_norm, :, :], dims=1)
+	offlev = median(frames_norm, dims=1)
+	offstd = std(frames_norm, dims=1)
 
-	data_norm = all_data[2_000_000:end, :, :] .- offlev;
+	data_norm = frames_raw.- offlev;
 
 	siglev = median(data_norm, dims=1)
 	sigstd = std(data_norm, dims=1)
 
 	data_norm = data_norm ./ mean(data_norm, dims=1) .- 1.0
+	0.0
 end
 
 # ╔═╡ 754bb2a0-c80a-4da6-9473-9d56c932499b
-plot(tbase[2_000_000:end][1:100:end], data_norm[1:100:end, 12, 4])
+plot(tbase[tidx_all][1:100:end], data_norm[1:100:end, 12, 4])
 
 # ╔═╡ b53ef757-542a-4601-a8c2-cce0a462f2e6
 begin
@@ -169,13 +152,12 @@ for k in keys(ipol_dict)
 end
 
 # ╔═╡ 2279bdfe-2903-4abf-8bb4-bad5dae0f7a3
-ip_bad_values(data_norm[1,:,:], ipol_dict)
+contourf(ip_bad_values(data_norm[1,:,:], ipol_dict))
 
 # ╔═╡ 3b7d5b38-7071-4abb-b44a-f210b53c772a
 begin
 	data_norm_ip = similar(data_norm)
 	# ipol_dict = generate_ip_index_set(bad_channels)
-
 	Threads.@threads for i in 1:size(data_norm)[1]
 		data_norm_ip[i,:,:] = ip_bad_values(data_norm[i,:,:], ipol_dict)
 	end
@@ -186,7 +168,7 @@ size(data_norm)
 
 # ╔═╡ d6667ab4-cb0d-40d2-b68b-b9663d8af927
 begin
-	responsetype = Bandpass(35000, 50000; fs=1.0/dt) #, fs= 1 ./ dt)
+	responsetype = Bandpass(35000, 50000; fs=1.0/dt) 
 	designmethod = Butterworth(4)
 	my_filter = digitalfilter(responsetype, designmethod)
 end
@@ -206,18 +188,18 @@ end
 
 # ╔═╡ b794e05b-302d-4c1f-9d9d-254aa2147a7f
 begin
-	plot(data_norm_ip[1_000_000:1_100_000, 12, 6])
-	plot!(data_norm_filt[1_000_000:1_100_000, 12, 6])
+	plot(data_norm_ip[1:1000, 12, 6])
+	plot!(data_norm_filt[1:1000, 12, 6])
 end
 
 # ╔═╡ 26877ccf-477d-44eb-b12f-823a69f7b94a
-contourf(data_norm_filt[379_515,:,:], clims=(-0.3,0.3), color=:bluesreds)
+contourf(data_norm_filt[450015,:,:], clims=(-0.1,0.1), color=:bluesreds)
 
 # ╔═╡ 489e7d1f-a711-4ec8-9672-beaf500f5beb
-tbase[1_379_500]
+# histogram(data_norm_filt[:])
 
 # ╔═╡ b8ce6b5d-bc3c-49a5-9047-c5d58fd2b3ca
-0.02 / 5e-7
+tbase[tidx_all][450000]
 
 # ╔═╡ 00000000-0000-0000-0000-000000000001
 PLUTO_PROJECT_TOML_CONTENTS = """
@@ -228,12 +210,14 @@ Interpolations = "a98d9a8b-a2ab-59e6-89dd-64a1c18fca59"
 Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
 Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
+StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 
 [compat]
 DSP = "~0.7.4"
 HDF5 = "~0.15.7"
 Interpolations = "~0.13.5"
 Plots = "~1.25.2"
+StatsBase = "~0.33.14"
 """
 
 # ╔═╡ 00000000-0000-0000-0000-000000000002
@@ -602,6 +586,12 @@ git-tree-sha1 = "f6250b16881adf048549549fba48b1161acdac8c"
 uuid = "c1c5ebd0-6772-5130-a774-d5fcae4a789d"
 version = "3.100.1+0"
 
+[[LERC_jll]]
+deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
+git-tree-sha1 = "bf36f528eec6634efc60d7ec062008f171071434"
+uuid = "88015f11-f218-50d7-93a8-a6af411a945d"
+version = "3.0.0+1"
+
 [[LZO_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
 git-tree-sha1 = "e5b909bcf985c5e2605737d2ce278ed791b89be6"
@@ -679,10 +669,10 @@ uuid = "4b2f31a3-9ecc-558c-b454-b3730dcb73e9"
 version = "2.35.0+0"
 
 [[Libtiff_jll]]
-deps = ["Artifacts", "JLLWrappers", "JpegTurbo_jll", "Libdl", "Pkg", "Zlib_jll", "Zstd_jll"]
-git-tree-sha1 = "340e257aada13f95f98ee352d316c3bed37c8ab9"
+deps = ["Artifacts", "JLLWrappers", "JpegTurbo_jll", "LERC_jll", "Libdl", "Pkg", "Zlib_jll", "Zstd_jll"]
+git-tree-sha1 = "c9551dd26e31ab17b86cbd00c2ede019c08758eb"
 uuid = "89763e89-9b03-5906-acba-b20f662cd828"
-version = "4.3.0+0"
+version = "4.3.0+1"
 
 [[Libuuid_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
@@ -971,9 +961,9 @@ version = "1.1.0"
 
 [[StatsBase]]
 deps = ["DataAPI", "DataStructures", "LinearAlgebra", "LogExpFunctions", "Missings", "Printf", "Random", "SortingAlgorithms", "SparseArrays", "Statistics", "StatsAPI"]
-git-tree-sha1 = "2bb0cb32026a66037360606510fca5984ccc6b75"
+git-tree-sha1 = "51383f2d367eb3b444c961d485c565e4c0cf4ba0"
 uuid = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
-version = "0.33.13"
+version = "0.33.14"
 
 [[StructArrays]]
 deps = ["Adapt", "DataAPI", "StaticArrays", "Tables"]
@@ -1252,14 +1242,10 @@ version = "0.9.1+5"
 
 # ╔═╡ Cell order:
 # ╠═71359fe0-5dd5-11ec-25e8-1715b363af65
-# ╠═d052875d-442e-4f58-9bba-5ff364ca614d
-# ╠═7edd82aa-3ab0-4c28-89af-5acf687b036a
 # ╠═f440bdf6-1019-4c1b-8b10-d0cbb0c15411
+# ╠═27920740-b434-47b3-8a8c-8a36332f4a6b
 # ╠═0f90523a-8c0e-4fa1-8c7b-f32f29f04151
 # ╠═b3b4fb21-71dc-4cc1-a50a-3887b19b1a25
-# ╠═cbdee39b-9b78-4aa6-97f0-7ebcd0a9a2be
-# ╠═d536b4f0-6486-43ab-ad08-8b58b8a6bc47
-# ╠═d75f56b4-bf0e-47f9-a294-8ae783f46f30
 # ╠═cf370d7e-1804-4e08-8e03-4f0e272cd1e4
 # ╠═0ad2fc36-9760-4dd6-8dbd-706b83f89427
 # ╠═754bb2a0-c80a-4da6-9473-9d56c932499b

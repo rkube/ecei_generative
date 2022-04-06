@@ -24,11 +24,11 @@ end
 
 # ╔═╡ 2dc5b778-579c-47dd-833a-195d2203d4f1
 begin
-	t_start = 2.6
-	t_end = 3.7
-	filter_f0 = 30000
+	t_start = 5.0
+	t_end = 6.0
+	filter_f0 = 35000
 	filter_f1 = 50000
-	shotnr = 25259
+	shotnr = 25260
 	dev = "GT"
 	datadir = @sprintf "/home/rkube/gpfs/KSTAR/%06d" shotnr
 end
@@ -45,12 +45,12 @@ end
 
 # ╔═╡ 4ee73e71-b92a-477a-81f5-1e33b56a1608
 begin
-	mode_t0 = 2.664
-	mode_t1 = 2.665
 	dt = 2e-6
+	mode_t0 = 5.006
+	mode_t1 = 5.007
 
-	frame_0 = convert(Int, round((mode_t0 - 2.0) / dt))
-	frame_1 = convert(Int, round((mode_t1 - 2.0) / dt))
+	frame_0 = convert(Int, round((mode_t0 - t_start) / dt)) 
+	frame_1 = convert(Int, round((mode_t1 - t_start) / dt))
 end
 
 # ╔═╡ c841e1b7-51ea-409d-b381-726ca3cf2cea
@@ -74,7 +74,7 @@ begin
 			title=title_str)
 		ftime += dt
 	end
-	fname = @sprintf "%06d_reorder.gif" shotnr
+	fname = @sprintf "%06d.gif" shotnr
 	gif(anim, fname, fps=5)
 end
 
