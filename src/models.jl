@@ -11,7 +11,7 @@ gemerator = ecei_generative.vanilla_generator() |> gpu;
 
 """
 
-export get_vanilla_discriminator, get_dc_discriminator, get_cat_discriminator,  get_vanilla_generator, get_dc_generator, get_dc_generator_v2, get_cat_discriminator_3d, get_generator_3d 
+export get_vanilla_discriminator, get_dc_discriminator, get_cat_discriminator,  get_vanilla_generator, get_dc_generator, get_dc_generator_v2, get_cat_discriminator_3d, get_generator_3d, get_ddc_v1
 
 
 function get_vanilla_discriminator(n_features)
@@ -172,7 +172,7 @@ end
 
 
 
-function get_ddc(v1)
+function get_ddc_v1(args)
     # Apply 3d convolution
     if args["activation"] in ["celu", "elu", "leakyrelu"]
         act = Base.Fix2(getfield(NNlib, Symbol(args["activation"])), Float32(args["activation_alpha"]))
@@ -182,28 +182,34 @@ function get_ddc(v1)
 
     # 4 layers are hard-coded
     # Compile list of the transpose-conv filter sizes for each of the four layers
-    filter_size_list = [(args["filter_size_H"][k], args["filter_size_W"][k], args["filter_size_D"][k]) for k in [1,2,3,4]]
+    filter_size_list = [(args["filter_size_H"][k], args["filter_size_W"][k], args["filter_size_D"][k]) for k in [1,2]]
 
     # Calculate the final size of the layers
+    # This model applies: conv, maxpool, conv, maxpool. 
+    # The maxpool output layer size follows the same formula as the conv layer. So we have to pass something like
+    # reduce((W, S) -> conv_layer_size(W, S...), [(3, 1), (2, 2)], init=24)
+    # to mimic conv_layer_size(conv_layer_size(24, 3, 1), 2, 2).
+    # To create the list of (K, 1), (K, K), we call iterators.flatten (K is the kernel size. Init takes the first argument W.
     final_size_H = reduce((W, S) -> conv_layer_size(W, S...),
-                          [(w, 1) for w in args["filter_size_H"]], init=24)
+                          Iterators.flatten([[(w, 1), (v, v)] for (w, v) in zip(args["filter_size_H"], args["maxpool_size_H"])]),
+                          init=24)
     final_size_W = reduce((W, S) -> conv_layer_size(W, S...),
-                          [(w, 1) for w in args["filter_size_W"]], init=8)
+                          Iterators.flatten([[(w, 1), (v, v)] for (w, v) in zip(args["filter_size_W"], args["maxpool_size_W"])]),
+                          init=8)
     final_size_D = reduce((W, S) -> conv_layer_size(W, S...),
-                          [(w, 1) for w in args["filter_size_D"]], init=args["num_depth"])
+                          Iterators.flatten([[(w, 1), (v, v)] for (w, v) in zip(args["filter_size_D"], args["maxpool_size_D"])]),
+                          init=args["num_depth"])
+    final_size = final_size_H * final_size_W * final_size_D * args["num_channels"][2]
 
-    final_size = final_size_H * final_size_W * final_size_D * args["num_channels"][4]
-
-    # Size annotations are for dim(x)[3] = 10, i.e. num_channels=10
-    return Chain(Conv(filter_size_list[1], 1=>args["num_channels"][1], act, bias=false),
-                 #BatchNorm(args["num_channels"][1], act),
-                 Conv(filter_size_list[2], args["num_channels"][1] => args["num_channels"][2], act, bias=false),        
-                 #BatchNorm(args["num_channels"][2], act),
-                 Conv(filter_size_list[3], args["num_channels"][2] => args["num_channels"][3], act, bias=false),     
-                 #BatchNorm(args["num_channels"][3], act),
-                 Conv(filter_size_list[4], args["num_channels"][3] => args["num_channels"][4], act, bias=false),
+    return Chain(Conv(filter_size_list[1], 1=>args["num_channels"][1], bias=false, init=Flux.kaiming_uniform),
+                 MaxPool((args["maxpool_size_H"][1], args["maxpool_size_W"][1], args["maxpool_size_D"][1])),
+                 x -> act.(x),
+                 Conv(filter_size_list[2], args["num_channels"][1] => args["num_channels"][2],  bias=false, init=Flux.kaiming_uniform),
+                 MaxPool((args["maxpool_size_H"][2], args["maxpool_size_W"][2], args["maxpool_size_D"][1])),
+                 x -> act.(x),
                  Flux.flatten, 
-                 Parallel(vcat, x -> x, Chain(Dense(final_size, args["num_classes"], init=Flux.kaiming_uniform), x -> softmax(x))))
+                 Parallel(vcat, x -> x, Chain(Dense(final_size, args["fc_size"], act, init=Flux.kaiming_uniform),
+                                              Dense(args["fc_size"], args["num_classes"], init=Flux.kaiming_uniform), x -> softmax(x))))
 end
 
 
