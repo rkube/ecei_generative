@@ -10,8 +10,8 @@ using Logging
 using JSON
 using BSON: @save
 
-using PyCall
-using Wandb
+#using PyCall
+#using Wandb
 
 using ecei_generative
 
@@ -26,28 +26,39 @@ end
 
 
 # num_depth is the number of ecei frames bundled together into a single example
-data_1 = load_from_hdf(2.6, 2.7, 35000, 50000, "/home/rkube/gpfs/KSTAR/025259", 25259, "GT");
-data_2 = load_from_hdf(2.6, 2.7, 5000, 9000, "/home/rkube/gpfs/KSTAR/022289", 22289, "GT");
-data_3 = load_from_hdf(2.0, 2.1, 10000, 25000, "/home/rkube/gpfs/KSTAR/025263", 25263, "GR");
+data_1 = load_from_hdf(2.6, 2.7, 35000, 50000, "/home/rkube/gpfs/KSTAR/025259", 25259, "GT");  # 3/2 island
+data_2 = load_from_hdf(2.6, 2.7, 5000, 9000, "/home/rkube/gpfs/KSTAR/022289", 22289, "GT");    # ELMs
+#data_3 = load_from_hdf(2.0, 2.1, 10000, 25000, "/home/rkube/gpfs/KSTAR/025263", 25263, "GR"); 2/1 island ?
+data_3 = load_from_hdf(5.0, 5.1, 5000, 9000, "/home/rkube/gpfs/KSTAR/025880", 25880, "GR"); # 2/1 island, slow
+
 
 # Re-order data_1 and data_2 to have multiple channels per example
 num_samples = size(data_1)[end] ÷ args["num_depth"];
-data_1 = data_1[:, :, 1:num_samples * args["num_depth"]];
-data_1 = reshape(data_1, (24, 8, args["num_depth"], 1, num_samples));
+clamp(data_1, -0.15, 0.15)
+data_1_tr = data_1[:, :, 1:num_samples * args["num_depth"]];
+data_1_tr = reshape(data_1_tr, (24, 8, args["num_depth"], 1, num_samples));
+data_1_tr = 2f0 * (data_1_tr .- minimum(data_1_tr)) / (maximum(data_1_tr) - minimum(data_1_tr)) .- 1f0 |> gpu;
+#data_1_tr = (data_1_tr .- mean(data_1_tr)) / std(data_1_tr) |> gpu;
 
 num_samples = size(data_2)[end] ÷ args["num_depth"];
-data_2 = data_2[:, :, 1:num_samples * args["num_depth"]];
-data_2 = reshape(data_2, (24, 8, args["num_depth"], 1, num_samples));
+clamp(data_2, -0.15, 0.15)
+data_2_tr = data_2[:, :, 1:num_samples * args["num_depth"]];
+data_2_tr = reshape(data_2_tr, (24, 8, args["num_depth"], 1, num_samples));
+data_2_tr = 2f0 * (data_2_tr .- minimum(data_2_tr)) / (maximum(data_2_tr) - minimum(data_2_tr)) .- 1f0 |> gpu;
+#data_2_tr = (data_2_tr .- mean(data_2_tr)) / std(data_2_tr) |> gpu;
 
 num_samples = size(data_3)[end] ÷ args["num_depth"];
-data_3 = data_3[:, :, 1:num_samples * args["num_depth"]];
-data_3 = reshape(data_3, (24, 8, args["num_depth"], 1, num_samples));
-data_3[isnan.(data_3)] .= 0f0
+clamp(data_3, -0.15, 0.15)
+data_3_tr = data_3[:, :, 1:num_samples * args["num_depth"]];
+data_3_tr = reshape(data_3_tr, (24, 8, args["num_depth"], 1, num_samples));
+data_3_tr[isnan.(data_3_tr)] .= 0f0;
+data_3_tr = 2f0 * (data_3_tr .- minimum(data_3_tr)) / (maximum(data_3_tr) - minimum(data_3_tr)) .- 1f0 |> gpu;
+#data_3_tr = (data_3_tr .- mean(data_3_tr)) / std(data_3_tr) |> gpu;
 
-data_all = cat(data_1, data_2, data_3, dims=5);
+data_all = cat(data_1_tr, data_2_tr, data_3_tr, dims=5);
 
 # Scale data_filt to [-1.0; 1.0]
-data_all = 2f0 * (data_all .- minimum(data_all)) / (maximum(data_all) - minimum(data_all)) .- 1f0 |> gpu; 
+#data_all = 2f0 * (data_all .- minimum(data_all)) / (maximum(data_all) - minimum(data_all)) .- 1f0 |> gpu; 
 
 # Label the various classes
 labels_1 = onehotbatch(repeat([:a], size(data_1)[end]), [:a, :b, :c]) |> gpu;
@@ -113,8 +124,10 @@ for epoch ∈ 1:args["num_epochs"]
             loss_simp =  2f0 / (args["num_classes"] * (args["num_classes"] -1)) * sum(triu(nom_simp ./ sqrt.(dnom_cs .+ eps(eltype(dnom_cs))), 1))          
             loss_orth = 2f0 * sum(triu(A' * A, 1)) / (args["batch_size"] * (args["batch_size"] -1))
 
-            @show loss_cs, loss_simp,loss_orth, sigma2
             Zygote.ignore() do  
+                if (mod(iter, 100) == 0)
+                    @show loss_cs, loss_simp,loss_orth, sigma2
+                end
                 all_loss_cs[iter] = loss_cs
                 all_loss_simp[iter] = loss_simp 
                 all_loss_orth[iter] = loss_orth
@@ -123,16 +136,16 @@ for epoch ∈ 1:args["num_epochs"]
         end         
         grads = back(one(loss))
         Flux.update!(opt, ps, grads)
-        iter += 1;
+        global iter += 1;
     end     
 
     # Show class assignments in the batch
     (x,y)  = first(loader_train)
-    @show sum(model(x)[end-1:end, :], dims=2)'
+    @show sum(model(x)[end - args["num_classes"] + 1:end, :], dims=2)'
 end
 
 model_c = model |> cpu;
-@save "model.bson" model_c
+@save "/home/rkube/gpfs/model.bson" model_c
 
 
 
