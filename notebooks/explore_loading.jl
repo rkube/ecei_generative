@@ -5,7 +5,7 @@ using Markdown
 using InteractiveUtils
 
 # ╔═╡ 71359fe0-5dd5-11ec-25e8-1715b363af65
-begin
+# begin
 	using Plots
 	using HDF5
 	using Printf
@@ -13,18 +13,18 @@ begin
 	using StatsBase
 	using Interpolations
 	using DSP
-end
+# end
 
 # ╔═╡ f440bdf6-1019-4c1b-8b10-d0cbb0c15411
 begin
-	shotnr = 25259
-	dev = "GT"
-	t_start = 2.0
-	t_end = 3.0
+	shotnr = 25878
+	dev = "GR"
+	t_start = 5.0
+	t_end = 7.0
 	dt = 2e-6 # Sampling frequency
 	t_norm_0 = -0.099 # Start of index used for normalization
 	t_norm_1 = -0.089 # End of index used for normalization	
-	datadir = "/home/rkube/gpfs/KSTAR/025259/"
+	datadir = @sprintf "/home/rkube/gpfs/KSTAR/%06d/" shotnr
     filename = @sprintf "ECEI.%06d.%s.h5" shotnr dev
 	fid = h5open(joinpath(datadir, filename), "r")
 end
@@ -41,7 +41,6 @@ end
 
 # ╔═╡ 0f90523a-8c0e-4fa1-8c7b-f32f29f04151
 begin
-	# all_data = zeros(5_000_000, 24, 8)
     frames_norm = zeros(sum(tidx_norm), 24, 8)
     frames_raw = zeros(sum(tidx_all), 24, 8)
 	for ch_v in 1:24
@@ -49,13 +48,10 @@ begin
 			channel_str = @sprintf "%s%02d%02d" dev ch_v ch_h
 			h5var_name = "/ECEI/ECEI_" * channel_str * "/Voltage"
 			A = read(fid, h5var_name)
-			# all_data[:, ch_v, ch_h] = A[:] .* 1e-4
             frames_norm[:, ch_v, ch_h] = A[tidx_norm] * 1e-4
             frames_raw[:, ch_v, ch_h] = A[tidx_all] * 1e-4
-			#res = sum(A) / size(A)[1]
 		end
 	end
-	#all_data = reshape(all_data, (5_000_000, 24, 8));
 end
 
 # ╔═╡ b3b4fb21-71dc-4cc1-a50a-3887b19b1a25
@@ -79,11 +75,10 @@ begin
 	sigstd = std(data_norm, dims=1)
 
 	data_norm = data_norm ./ mean(data_norm, dims=1) .- 1.0
-	0.0
 end
 
 # ╔═╡ 754bb2a0-c80a-4da6-9473-9d56c932499b
-plot(tbase[tidx_all][1:100:end], data_norm[1:100:end, 12, 4])
+iplot(tbase[tidx_all][1:100:end], data_norm[1:100:end, 12, 4])
 
 # ╔═╡ b53ef757-542a-4601-a8c2-cce0a462f2e6
 begin
@@ -99,13 +94,19 @@ end
 
 # ╔═╡ 283ed241-e2f9-41ab-aec8-21298f50fcd5
 function generate_ip_index_set(bad_channels)
+	# This function calculates the neighbors for pixels marked as true in
+	# a 2d boolean array.
+	# Input: bad_channels, BitArray{2}.
+	# Output: Dict(bad_channel -> [list of neighboring good pixels])
 	R = CartesianIndices(bad_channels) # Create cartesian indices
 	
 	Ifirst, Ilast = first(R), last(R) # Range for interpolation
-	I_one = oneunit(Ifirst) # Unit square around a pixel
+	I_one = oneunit(Ifirst)           # Unit square around a pixel
 
 	ipol_dict = Dict()
 	
+	# Iterate over all bad pixels and create a list of good neighbor channels 
+	# for this pixel.
 	for I in findall(bad_channels)
 		@show I
 		ipol_list_ch = []
@@ -122,10 +123,9 @@ end
 
 # ╔═╡ 21e29a9f-e6bf-4b35-9fac-bf91fe1e9e5f
 function ip_bad_values(field, ipol_dict)
-	#field = data_norm[1,:,:]
 	R = CartesianIndices(field) # Create cartesian indices
-	field_ip = similar(field) # Field with interpolated values
-	field_ip[:] = field[:] # Copy all values
+	field_ip = similar(field)   # Field with interpolated values
+	field_ip[:] = field[:]      # Copy all values
 	
 	Ifirst, Ilast = first(R), last(R) # Range for interpolation
 	I_one = oneunit(Ifirst) # Unit square around a pixel
@@ -133,6 +133,13 @@ function ip_bad_values(field, ipol_dict)
 	for bad_px in keys(ipol_dict)
 		bad_px_entries = ipol_dict[bad_px]
 
+		# We can't interpolate pixels that have no valid pixels as neighbors, so we skip them 
+		if length(bad_px_entries) == 0
+			field_ip[bad_px] = zero(eltype(field))
+			continue 
+		end
+		
+		# Interpolate the bad pixel using the average of neighboring pixels
 		ip_val = 0.0
 		for J in bad_px_entries
 			ip_val += field[J]

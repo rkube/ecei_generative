@@ -9,7 +9,7 @@ begin
 	import Pkg
 	Pkg.activate("/home/rkube/repos/ecei_generative")
 	Pkg.instantiate()
-	Pkg.add("Plots")
+	# Pkg.add("Plots")
 
 	using ecei_generative
 	using Plots
@@ -34,9 +34,6 @@ end
 
 # ╔═╡ 3040e530-2c83-4e19-afa1-a7923e725f9f
 data_filt = load_from_hdf(t_start, t_end, filter_f0, filter_f1, datadir, shotnr, dev);
-
-# ╔═╡ a0f07049-0a6c-440a-a7e7-b74771371af2
-findall(x -> x == true, Bool[0 0 0 0 0 0 0 0; 0 0 0 0 0 0 0 0; 0 0 0 0 0 0 0 0; 0 0 0 0 0 0 0 0; 0 0 0 0 0 0 0 0; 0 0 0 0 0 0 0 0; 0 0 0 0 0 0 0 0; 0 0 0 0 0 0 0 0; 0 0 0 0 0 0 0 0; 0 0 0 0 0 0 0 0; 0 0 0 0 0 0 0 0; 0 0 0 0 0 0 0 0; 0 0 0 0 0 0 0 0; 0 0 0 0 0 0 0 0; 0 0 0 0 0 0 0 0; 0 0 0 0 0 0 0 0; 0 0 1 1 0 0 0 0; 0 0 0 0 0 0 0 0; 0 0 0 0 0 0 0 0; 1 1 1 0 0 0 0 0; 0 0 0 0 0 0 0 0; 0 0 0 0 0 0 0 0; 0 0 0 0 0 0 0 0; 0 0 0 0 0 1 0 0])
 
 # ╔═╡ ac899c28-a8b5-4122-a093-b1f54589cfce
 begin
@@ -64,9 +61,6 @@ contourf(data_filt[:,:, frame_0 + 18], clims=(-0.075,0.075),
 	xlim=(1,8),
 	aspect_ratio=1)
 
-# ╔═╡ a4566bf6-a910-4210-adb0-4eae59e74ee7
-
-
 # ╔═╡ d91f1d9b-7269-4225-ad94-3853831fe617
 begin
 	ftime = mode_t0
@@ -78,83 +72,64 @@ begin
 			aspect_ratio=1,
 			title=title_str)
 		ftime += dt
-	end
+	end 
 	fname = @sprintf "%06d.gif" shotnr
 	gif(anim, fname, fps=5)
 end
 
-# ╔═╡ 355d51f5-23e4-4fb6-aeb2-006302bee38f
-rg = maximum(data_filt) - minimum(data_filt)
-
-# ╔═╡ a4a66afc-95c8-42a2-ade7-555079655761
+# ╔═╡ eaad041c-bcfd-412c-9f84-7d1e4555304a
 begin
-	bad_idx = findall(arr -> abs.(arr) .> 2.0, data_filt)
-	bad_idx_2 = [(i[1], i[2]) for i in bad_idx]
+	# Plot data normalization and look at clipping
+	data_tr = clamp.(data_filt, -0.15, 0.15);
+	tr = fit(UnitRangeTransform, data_tr[:]);
+	data_unif = StatsBase.transform(tr, data_tr[:]);
+
+	tr = fit(ZScoreTransform, data_tr[:]);
+	data_std = StatsBase.transform(tr, data_tr[:]);
 end
 
-# ╔═╡ 835d7f81-fbff-42a5-a466-08198a091bbf
-bad_idx[1]
+# ╔═╡ 18c0caf8-63fa-49eb-9231-b8a80c25e81f
+sum(abs.(data_filt) .< 1e-3) / length(data_filt)
 
-# ╔═╡ 13b774d6-3240-441e-ad82-bbb89127ab38
-length(bad_idx)
+# ╔═╡ 8cc3516a-c7d1-4b6a-a0d8-f506c60f12c5
+findall(x -> abs(x) < 1e-3, data_filt[:, :, frame_0])
 
-# ╔═╡ 7e45f3d4-1d29-4728-baf5-021f53ad4a54
-contourf(data_filt[:, :, 87403])
+# ╔═╡ 2321746c-ca34-4f44-af8c-ab4b07e1d974
+begin
+	frame = frame_0 + 10
+	p = contourf(data_filt[:, :, frame],  clims=(-0.075,0.075))
+	idx = findall(x -> abs(x) < 1e-3, data_filt[:, :, frame])
+	plot!(p, [i[2] for i in idx], [i[1] for i in idx], seriestype=:scatter, color=:black, ms=8)
+	p
+end
 
-# ╔═╡ 27b2ac07-3f86-4187-96c2-68af53cfdd44
-data_filt[20, 8, 87522] = 0f0
+# ╔═╡ 4cfe783d-9256-4a08-933f-5b20cc197d1c
 
-# ╔═╡ 4c8edadc-481d-48ab-a9e5-52637761472f
+
+# ╔═╡ 93a63569-ae97-4059-859e-94db0c575737
 histogram(data_filt[:])
 
-# ╔═╡ 8cfa9ca7-b3fb-4fc9-ab57-81cb2dcebedb
-begin
-	data_norm = 2f0 * (data_filt .- minimum(data_filt)) / (maximum(data_filt) - minimum(data_filt)) .- 1f0;
-	data_std = (data_filt .- mean(data_filt)) ./ std(data_filt);
-	0
-end
-
-# ╔═╡ 9dec3253-633c-4d86-bff9-cf429ca67dcc
+# ╔═╡ fd07241d-da8e-4a86-bd4e-643fffaf3ac3
 histogram(data_norm[:])
 
-# ╔═╡ 77e41325-57b3-4703-b0ec-8a3ba473b601
+# ╔═╡ 09361635-e427-45d3-a8b8-619ad102e405
 histogram(data_std[:])
-
-# ╔═╡ 21362555-39a2-4778-954d-dbc8f1da1c5b
-maximum(data_filt), minimum(data_filt), mean(data_filt), std(data_filt)
-
-# ╔═╡ 3a8d30e6-6a10-476b-abd8-8bf0b63591a5
-maximum(data_norm), minimum(data_norm), mean(data_norm), std(data_norm)
-
-# ╔═╡ 4533123d-43a8-489b-919d-9414e1979d77
-maximum(data_std), minimum(data_std), mean(data_std), std(data_std)
-
-# ╔═╡ eaad041c-bcfd-412c-9f84-7d1e4555304a
-
 
 # ╔═╡ Cell order:
 # ╠═f533c82f-a09c-47ec-8387-50ce6efbc943
 # ╠═7d8169b8-5838-41d5-be00-c508676df9e2
 # ╠═2dc5b778-579c-47dd-833a-195d2203d4f1
 # ╠═3040e530-2c83-4e19-afa1-a7923e725f9f
-# ╠═a0f07049-0a6c-440a-a7e7-b74771371af2
 # ╠═ac899c28-a8b5-4122-a093-b1f54589cfce
 # ╠═4ee73e71-b92a-477a-81f5-1e33b56a1608
 # ╠═c841e1b7-51ea-409d-b381-726ca3cf2cea
 # ╠═5193ed87-e280-41b4-952c-fd4fe83ce1b2
-# ╠═a4566bf6-a910-4210-adb0-4eae59e74ee7
 # ╠═d91f1d9b-7269-4225-ad94-3853831fe617
-# ╠═355d51f5-23e4-4fb6-aeb2-006302bee38f
-# ╠═a4a66afc-95c8-42a2-ade7-555079655761
-# ╠═835d7f81-fbff-42a5-a466-08198a091bbf
-# ╠═13b774d6-3240-441e-ad82-bbb89127ab38
-# ╠═7e45f3d4-1d29-4728-baf5-021f53ad4a54
-# ╠═27b2ac07-3f86-4187-96c2-68af53cfdd44
-# ╠═4c8edadc-481d-48ab-a9e5-52637761472f
-# ╠═9dec3253-633c-4d86-bff9-cf429ca67dcc
-# ╠═77e41325-57b3-4703-b0ec-8a3ba473b601
-# ╠═8cfa9ca7-b3fb-4fc9-ab57-81cb2dcebedb
-# ╠═21362555-39a2-4778-954d-dbc8f1da1c5b
-# ╠═3a8d30e6-6a10-476b-abd8-8bf0b63591a5
-# ╠═4533123d-43a8-489b-919d-9414e1979d77
 # ╠═eaad041c-bcfd-412c-9f84-7d1e4555304a
+# ╠═18c0caf8-63fa-49eb-9231-b8a80c25e81f
+# ╠═8cc3516a-c7d1-4b6a-a0d8-f506c60f12c5
+# ╠═2321746c-ca34-4f44-af8c-ab4b07e1d974
+# ╠═4cfe783d-9256-4a08-933f-5b20cc197d1c
+# ╠═93a63569-ae97-4059-859e-94db0c575737
+# ╠═fd07241d-da8e-4a86-bd4e-643fffaf3ac3
+# ╠═09361635-e427-45d3-a8b8-619ad102e405

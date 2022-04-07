@@ -17,6 +17,7 @@ end
 begin
 	using Plots
 	using Printf
+	using StatsBase
 end
 
 # ╔═╡ 7d8169b8-5838-41d5-be00-c508676df9e2
@@ -36,11 +37,14 @@ end
 # ╔═╡ 3040e530-2c83-4e19-afa1-a7923e725f9f
 data_filt = load_from_hdf(t_start, t_end, filter_f0, filter_f1, datadir, shotnr, dev);
 
+# ╔═╡ 8144a2e5-5567-4ea9-a0a5-aef8e8a3c000
+data_filt[isnan.(data_filt)] .= 0f0
+
 # ╔═╡ ac899c28-a8b5-4122-a093-b1f54589cfce
 begin
-	plot(data_filt[12, 6, 370_000:380_000])
-	plot!(data_filt[12, 7, 370_000:380_000])
-	plot!(data_filt[12, 8, 370_000:380_000])
+	plot(data_filt[12, 6, :])
+	plot!(data_filt[12, 7, :])
+	plot!(data_filt[12, 8, :])
 end
 
 # ╔═╡ 4ee73e71-b92a-477a-81f5-1e33b56a1608
@@ -49,9 +53,8 @@ begin
 	mode_t0 = 2.006
 	mode_t1 = 2.007
 	
-
-	frame_0 = convert(Int, round((mode_t0 - 2.0) / dt)) 
-	frame_1 = convert(Int, round((mode_t1 - 2.0) / dt))
+	frame_0 = round((mode_t0 - 2.0) / dt) |> Int;
+	frame_1 = round((mode_t1 - 2.0) / dt) |> Int;
 end
 
 # ╔═╡ c841e1b7-51ea-409d-b381-726ca3cf2cea
@@ -64,20 +67,40 @@ contourf(data_filt[:,:, frame_0 + 18], clims=(-0.075,0.075),
 	aspect_ratio=1)
 
 # ╔═╡ d91f1d9b-7269-4225-ad94-3853831fe617
-begin
-	ftime = mode_t0
-	anim = @animate for frame ∈ frame_0:frame_1
+# begin
+# 	ftime = mode_t0
+# 	anim = @animate for frame ∈ frame_0:frame_1
 
-		title_str = @sprintf "%5d %s t=%8.6fs" shotnr dev ftime
-		contourf(data_filt[:,:,frame], clims=(-0.075,0.075), 
-			color=:bluesreds,
-			aspect_ratio=1,
-			title=title_str)
-		ftime += dt
-	end
-	fname = @sprintf "%06d.gif" shotnr
-	gif(anim, fname, fps=5)
+# 		title_str = @sprintf "%5d %s t=%8.6fs" shotnr dev ftime
+# 		contourf(data_filt[:,:,frame], clims=(-0.075,0.075), 
+# 			color=:bluesreds,
+# 			aspect_ratio=1,
+# 			title=title_str)
+# 		ftime += dt
+# 	end
+# 	fname = @sprintf "%06d.gif" shotnr
+# 	gif(anim, fname, fps=5)
+# end
+
+# ╔═╡ d4260907-9714-48fe-ac9c-522b2b4f92ed
+sum(isnan.(data_filt)) / length(data_filt)
+
+# ╔═╡ b68fc6be-1e2d-4870-bc4d-750c8d1b3ecf
+begin
+	# Plot data normalization and look at clipping
+	data_tr = clamp.(data_filt, -0.15, 0.15);
+	tr = fit(UnitRangeTransform, data_tr[:]);
+	data_unif = StatsBase.transform(tr, data_tr[:]);
+
+	tr = fit(ZScoreTransform, data_tr[:]);
+	data_std = StatsBase.transform(tr, data_tr[:]);
 end
+
+# ╔═╡ f771373d-d451-426a-a5a1-107732271f2a
+histogram(data_unif[:])
+
+# ╔═╡ 6588fd14-b957-467a-96ba-03c59ac02efd
+histogram(data_std[:])
 
 # ╔═╡ Cell order:
 # ╠═51ca7818-6caf-11ec-341c-79ded0af6756
@@ -85,8 +108,13 @@ end
 # ╠═7d8169b8-5838-41d5-be00-c508676df9e2
 # ╠═2dc5b778-579c-47dd-833a-195d2203d4f1
 # ╠═3040e530-2c83-4e19-afa1-a7923e725f9f
+# ╠═8144a2e5-5567-4ea9-a0a5-aef8e8a3c000
 # ╠═ac899c28-a8b5-4122-a093-b1f54589cfce
 # ╠═4ee73e71-b92a-477a-81f5-1e33b56a1608
 # ╠═c841e1b7-51ea-409d-b381-726ca3cf2cea
 # ╠═5193ed87-e280-41b4-952c-fd4fe83ce1b2
 # ╠═d91f1d9b-7269-4225-ad94-3853831fe617
+# ╠═d4260907-9714-48fe-ac9c-522b2b4f92ed
+# ╠═b68fc6be-1e2d-4870-bc4d-750c8d1b3ecf
+# ╠═f771373d-d451-426a-a5a1-107732271f2a
+# ╠═6588fd14-b957-467a-96ba-03c59ac02efd

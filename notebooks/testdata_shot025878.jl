@@ -17,7 +17,6 @@ end
 begin
 	using Plots
 	using Printf
-	using Statistics
 	using StatsBase
 end
 
@@ -26,12 +25,12 @@ end
 
 # ╔═╡ 2dc5b778-579c-47dd-833a-195d2203d4f1
 begin
-	t_start = 2.7
-	t_end = 2.8
-	filter_f0 = 5000
-	filter_f1 = 9000
-	shotnr = 22289
-	dev = "GT"
+	t_start = 5.0
+	t_end = 7.0
+	filter_f0 = 35000
+	filter_f1 = 50000
+	shotnr = 25878
+	dev = "GR"
 	datadir = @sprintf "/home/rkube/gpfs/KSTAR/%06d" shotnr
 end
 
@@ -45,21 +44,24 @@ begin
 	plot!(data_filt[12, 8, :])
 end
 
+# ╔═╡ 43a7fb9b-a5ff-42c6-91e1-826163fe0f74
+sum(isnan.(data_filt))
+
+# ╔═╡ 07051bac-dca7-4d25-a10b-07c7ad08f98f
+data_filt[isnan.(data_filt)] .= 0f0
+
 # ╔═╡ 4ee73e71-b92a-477a-81f5-1e33b56a1608
 begin
 	dt = 2e-6
-	mode_t0 = 2.716
-	mode_t1 = 2.718
+	mode_t0 = t_start + 1e-3
+	mode_t1 = t_start + 2e-3
 
-	frame_0 = convert(Int, round((mode_t0 - t_start) / dt)) 
-	frame_1 = convert(Int, round((mode_t1 - t_start) / dt))
+	frame_0 = round((mode_t0 - t_start) / dt) |> Int;
+	frame_1 = round((mode_t1 - t_start) / dt) |> Int;
 end
 
-# ╔═╡ c841e1b7-51ea-409d-b381-726ca3cf2cea
-frame_1 - frame_0
-
 # ╔═╡ 5193ed87-e280-41b4-952c-fd4fe83ce1b2
-contourf(data_filt[:,:, frame_0 + 18], clims=(-0.075,0.075), 
+contourf(data_filt[:,:, frame_0 + 28], clims=(-0.075,0.075), 
 	color=:bluesreds,
 	xlim=(1,8),
 	aspect_ratio=1)
@@ -76,11 +78,11 @@ begin
 			title=title_str)
 		ftime += dt
 	end
-	fname = @sprintf "%06d_reorder.gif" shotnr
+	fname = @sprintf "%06d.gif" shotnr
 	gif(anim, fname, fps=5)
 end
 
-# ╔═╡ 54e24890-2059-4ea2-8e38-0832907a7953
+# ╔═╡ e6a05812-cfdd-410e-acab-35d672b125f7
 begin
 	# Plot data normalization and look at clipping
 	data_tr = clamp.(data_filt, -0.15, 0.15);
@@ -91,13 +93,11 @@ begin
 	data_std = StatsBase.transform(tr, data_tr[:]);
 end
 
-# ╔═╡ f406951c-be9b-4262-b724-788b5f025a7c
-histogram(data_filt[:])
+# ╔═╡ 58ee8996-ba95-4d19-af5a-1c6e370be491
+histogram(data_unif[:])
 
-# ╔═╡ c82d1d8f-0a82-478e-8de0-b60c264a76f6
-histogram(data_norm[:])
 
-# ╔═╡ 6531f024-ff36-4682-82ce-9f9c57482919
+# ╔═╡ dadd203d-c89a-4a89-9e59-052b33269fb3
 histogram(data_std[:])
 
 # ╔═╡ Cell order:
@@ -107,11 +107,11 @@ histogram(data_std[:])
 # ╠═2dc5b778-579c-47dd-833a-195d2203d4f1
 # ╠═3040e530-2c83-4e19-afa1-a7923e725f9f
 # ╠═ac899c28-a8b5-4122-a093-b1f54589cfce
+# ╠═43a7fb9b-a5ff-42c6-91e1-826163fe0f74
+# ╠═07051bac-dca7-4d25-a10b-07c7ad08f98f
 # ╠═4ee73e71-b92a-477a-81f5-1e33b56a1608
-# ╠═c841e1b7-51ea-409d-b381-726ca3cf2cea
 # ╠═5193ed87-e280-41b4-952c-fd4fe83ce1b2
 # ╠═d91f1d9b-7269-4225-ad94-3853831fe617
-# ╠═54e24890-2059-4ea2-8e38-0832907a7953
-# ╠═f406951c-be9b-4262-b724-788b5f025a7c
-# ╠═c82d1d8f-0a82-478e-8de0-b60c264a76f6
-# ╠═6531f024-ff36-4682-82ce-9f9c57482919
+# ╠═e6a05812-cfdd-410e-acab-35d672b125f7
+# ╠═58ee8996-ba95-4d19-af5a-1c6e370be491
+# ╠═dadd203d-c89a-4a89-9e59-052b33269fb3
