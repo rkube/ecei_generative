@@ -92,13 +92,19 @@ begin
 end
 
 # ╔═╡ f406951c-be9b-4262-b724-788b5f025a7c
-histogram(data_filt[:])
+p = histogram(data_filt[:], title="Shot $(shotnr) - Processed")
+fname = @sprintf "%06d_hist_processed.png" shotnr
+savefig(p, fname)
 
 # ╔═╡ c82d1d8f-0a82-478e-8de0-b60c264a76f6
-histogram(data_norm[:])
+p = histogram(data_unif[:], title="Shot $(shotnr) - UnitRangeTransform")
+fname = @sprintf "%06d_hist_unitrg.png" shotnr
+savefig(p, fname)
 
 # ╔═╡ 6531f024-ff36-4682-82ce-9f9c57482919
-histogram(data_std[:])
+p = histogram(data_std[:], title="Shot $(shotnr) - ZScoreTransform")
+fname = @sprintf "%06d_hist_zscore.png" shotnr
+savefig(p, fname)
 
 # ╔═╡ Cell order:
 # ╠═51ca7818-6caf-11ec-341c-79ded0af6756

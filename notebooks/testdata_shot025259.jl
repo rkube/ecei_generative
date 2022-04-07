@@ -37,9 +37,9 @@ data_filt = load_from_hdf(t_start, t_end, filter_f0, filter_f1, datadir, shotnr,
 
 # ╔═╡ ac899c28-a8b5-4122-a093-b1f54589cfce
 begin
-	plot(data_filt[12, 6, 370_000:380_000])
-	plot!(data_filt[12, 7, 370_000:380_000])
-	plot!(data_filt[12, 8, 370_000:380_000])
+	plot(data_filt[12, 6, :])
+	plot!(data_filt[12, 7, :])
+	plot!(data_filt[12, 8, :])
 end
 
 # ╔═╡ 4ee73e71-b92a-477a-81f5-1e33b56a1608
@@ -48,8 +48,8 @@ begin
 	mode_t1 = 2.665
 	dt = 2e-6
 
-	frame_0 = convert(Int, round((mode_t0 - t_start) / dt))
-	frame_1 = convert(Int, round((mode_t1 - t_start) / dt))
+	frame_0 = round((mode_t0 - t_start) / dt)) |> Int;
+	frame_1 = round((mode_t1 - t_start) / dt)) |> Int;
 end
 
 # ╔═╡ c841e1b7-51ea-409d-b381-726ca3cf2cea
@@ -77,22 +77,6 @@ begin
 	gif(anim, fname, fps=5)
 end
 
-# ╔═╡ eaad041c-bcfd-412c-9f84-7d1e4555304a
-begin
-	# Plot data normalization and look at clipping
-	data_tr = clamp.(data_filt, -0.15, 0.15);
-	tr = fit(UnitRangeTransform, data_tr[:]);
-	data_unif = StatsBase.transform(tr, data_tr[:]);
-
-	tr = fit(ZScoreTransform, data_tr[:]);
-	data_std = StatsBase.transform(tr, data_tr[:]);
-end
-
-# ╔═╡ 18c0caf8-63fa-49eb-9231-b8a80c25e81f
-sum(abs.(data_filt) .< 1e-3) / length(data_filt)
-
-# ╔═╡ 8cc3516a-c7d1-4b6a-a0d8-f506c60f12c5
-findall(x -> abs(x) < 1e-3, data_filt[:, :, frame_0])
 
 # ╔═╡ 2321746c-ca34-4f44-af8c-ab4b07e1d974
 begin
@@ -103,17 +87,34 @@ begin
 	p
 end
 
-# ╔═╡ 4cfe783d-9256-4a08-933f-5b20cc197d1c
+begin
+	# Plot data normalization and look at clipping
+	data_tr = clamp.(data_filt, -0.15, 0.15);
+	tr = fit(UnitRangeTransform, data_tr[:]);
+	data_unif = StatsBase.transform(tr, data_tr[:]);
+
+	tr = fit(ZScoreTransform, data_tr[:]);
+	data_std = StatsBase.transform(tr, data_tr[:]);
+end
+
+# ╔═╡ f406951c-be9b-4262-b724-788b5f025a7c
+p = histogram(data_filt[:], title="Shot $(shotnr) - Processed")
+fname = @sprintf "%06d_hist_processed.png" shotnr
+savefig(p, fname)
+
+# ╔═╡ c82d1d8f-0a82-478e-8de0-b60c264a76f6
+p = histogram(data_unif[:], title="Shot $(shotnr) - UnitRangeTransform")
+fname = @sprintf "%06d_hist_unitrg.png" shotnr
+savefig(p, fname)
+
+# ╔═╡ 6531f024-ff36-4682-82ce-9f9c57482919
+p = histogram(data_std[:], title="Shot $(shotnr) - ZScoreTransform")
+fname = @sprintf "%06d_hist_zscore.png" shotnr
+savefig(p, fname)
 
 
-# ╔═╡ 93a63569-ae97-4059-859e-94db0c575737
-histogram(data_filt[:])
 
-# ╔═╡ fd07241d-da8e-4a86-bd4e-643fffaf3ac3
-histogram(data_norm[:])
 
-# ╔═╡ 09361635-e427-45d3-a8b8-619ad102e405
-histogram(data_std[:])
 
 # ╔═╡ Cell order:
 # ╠═f533c82f-a09c-47ec-8387-50ce6efbc943

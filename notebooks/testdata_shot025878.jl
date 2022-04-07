@@ -93,12 +93,20 @@ begin
 	data_std = StatsBase.transform(tr, data_tr[:]);
 end
 
-# ╔═╡ 58ee8996-ba95-4d19-af5a-1c6e370be491
-histogram(data_unif[:])
+# ╔═╡ f406951c-be9b-4262-b724-788b5f025a7c
+p = histogram(data_filt[:], title="Shot $(shotnr) - Processed")
+fname = @sprintf "%06d_hist_processed.png" shotnr
+savefig(p, fname)
 
+# ╔═╡ c82d1d8f-0a82-478e-8de0-b60c264a76f6
+p = histogram(data_unif[:], title="Shot $(shotnr) - UnitRangeTransform")
+fname = @sprintf "%06d_hist_unitrg.png" shotnr
+savefig(p, fname)
 
-# ╔═╡ dadd203d-c89a-4a89-9e59-052b33269fb3
-histogram(data_std[:])
+# ╔═╡ 6531f024-ff36-4682-82ce-9f9c57482919
+p = histogram(data_std[:], title="Shot $(shotnr) - ZScoreTransform")
+fname = @sprintf "%06d_hist_zscore.png" shotnr
+savefig(p, fname)
 
 # ╔═╡ Cell order:
 # ╠═51ca7818-6caf-11ec-341c-79ded0af6756

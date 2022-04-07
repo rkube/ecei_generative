@@ -82,10 +82,7 @@ contourf(data_filt[:,:, frame_0 + 18], clims=(-0.075,0.075),
 # 	gif(anim, fname, fps=5)
 # end
 
-# ╔═╡ d4260907-9714-48fe-ac9c-522b2b4f92ed
-sum(isnan.(data_filt)) / length(data_filt)
-
-# ╔═╡ b68fc6be-1e2d-4870-bc4d-750c8d1b3ecf
+# ╔═╡ e6a05812-cfdd-410e-acab-35d672b125f7
 begin
 	# Plot data normalization and look at clipping
 	data_tr = clamp.(data_filt, -0.15, 0.15);
@@ -96,11 +93,20 @@ begin
 	data_std = StatsBase.transform(tr, data_tr[:]);
 end
 
-# ╔═╡ f771373d-d451-426a-a5a1-107732271f2a
-histogram(data_unif[:])
+# ╔═╡ f406951c-be9b-4262-b724-788b5f025a7c
+p = histogram(data_filt[:], title="Shot $(shotnr) - Processed")
+fname = @sprintf "%06d_hist_processed.png" shotnr
+savefig(p, fname)
 
-# ╔═╡ 6588fd14-b957-467a-96ba-03c59ac02efd
-histogram(data_std[:])
+# ╔═╡ c82d1d8f-0a82-478e-8de0-b60c264a76f6
+p = histogram(data_unif[:], title="Shot $(shotnr) - UnitRangeTransform")
+fname = @sprintf "%06d_hist_unitrg.png" shotnr
+savefig(p, fname)
+
+# ╔═╡ 6531f024-ff36-4682-82ce-9f9c57482919
+p = histogram(data_std[:], title="Shot $(shotnr) - ZScoreTransform")
+fname = @sprintf "%06d_hist_zscore.png" shotnr
+savefig(p, fname)
 
 # ╔═╡ Cell order:
 # ╠═51ca7818-6caf-11ec-341c-79ded0af6756
