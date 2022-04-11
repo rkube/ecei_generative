@@ -50,6 +50,7 @@ begin
 	data_2 = load_from_hdf(2.6, 2.7, 5000, 9000, "/home/rkube/gpfs/KSTAR/022289", 22289, "GT"); # ELM
 	data_3 = load_from_hdf(5.0, 5.1, 5000, 9000, "/home/rkube/gpfs/KSTAR/025880", 25880, "GR"); # 2/1 MI
 	data_4 = load_from_hdf(5.9, 6.0, 35000, 50000, "/home/rkube/gpfs/KSTAR/025260", 25260, "GT"); # Another 3/2 MI, not trained on
+	
 	0.0
 end
 
@@ -57,39 +58,36 @@ end
 begin
 	# Re-order data_1 and data_2 to have multiple channels per example
 	num_samples = size(data_1)[end] ÷ args["num_depth"];
-	clamp!(data_1, -0.15, 0.15);
-	data_1_tr = reshape(data_1[:, :, 1:num_samples * args["num_depth"]], (24, 8, args["num_depth"], 1, num_samples));
-	data_1_tr = 2f0 * (data_1_tr .- minimum(data_1_tr)) / (maximum(data_1_tr) - minimum(data_1_tr)) .- 1f0;
-	# data_1_tr = (data_1_tr .- mean(data_1_tr)) / std(data_1_tr);
+	data_1_tr = data_1[:, :, 1:num_samples * args["num_depth"]];
+	clamp!(data_1_tr, -0.15, 0.15);
+	trf = fit(ZScoreTransform, data_1_tr[:]);
+	data_1_tr = StatsBase.transform(trf, data_1_tr[:]);
+	data_1_tr = reshape(data_1_tr, (24, 8, args["num_depth"], 1, num_samples));
+
 
 	num_samples = size(data_2)[end] ÷ args["num_depth"];
-	clamp!(data_2, -0.15, 0.15);
-	data_2_tr = reshape(data_2[:, :, 1:num_samples * args["num_depth"]], (24, 8, args["num_depth"], 1, num_samples));
-	data_2_tr = 2f0 * (data_2_tr .- minimum(data_2_tr)) / (maximum(data_2_tr) - minimum(data_2_tr)) .- 1f0;
-	# data_2_tr = (data_2_tr .- mean(data_2_tr)) / std(data_2_tr);
-
+	data_2_tr = data_2[:, :, 1:num_samples * args["num_depth"]];
+	clamp!(data_2_tr, -0.15, 0.15);
+	trf = fit(ZScoreTransform, data_2_tr[:]);
+	data_2_tr = StatsBase.transform(trf, data_2_tr[:]);
+	data_2_tr = reshape(data_2_tr, (24, 8, args["num_depth"], 1, num_samples));
 
 	num_samples = size(data_3)[end] ÷ args["num_depth"];
-	clamp!(data_3, -0.15, 0.15);
-	data_3_tr = reshape(data_3[:, :, 1:num_samples * args["num_depth"]], (24, 8, args["num_depth"], 1, num_samples));
-	data_3_tr[isnan.(data_3_tr)] .= 0f0
-	data_3_tr = 2f0 * (data_3_tr .- minimum(data_3_tr)) / (maximum(data_3_tr) - minimum(data_3_tr)) .- 1f0;
-	# data_3_tr = (data_3_tr .- mean(data_3_tr)) / std(data_3_tr);
-
+	data_3_tr = data_3[:, :, 1:num_samples * args["num_depth"]];
+	clamp!(data_3_tr, -0.15, 0.15);
+	trf = fit(ZScoreTransform, data_3_tr[:]);
+	data_3_tr = StatsBase.transform(trf, data_3_tr[:]);
+	data_3_tr = reshape(data_3_tr, (24, 8, args["num_depth"], 1, num_samples));
 
 	num_samples = size(data_4)[end] ÷ args["num_depth"];
-	clamp!(data_4, -0.15, 0.15);
-	data_4_tr = reshape(data_4[:, :, 1:num_samples * args["num_depth"]], (24, 8, args["num_depth"], 1, num_samples));
-	data_4_tr[isnan.(data_4_tr)] .= 0f0
-	data_4_tr = 2f0 * (data_4_tr .- minimum(data_4_tr)) / (maximum(data_4_tr) - minimum(data_4_tr)) .- 1f0;
-	# data_4_tr = (data_4_tr .- mean(data_4_tr)) / std(data_4_tr);
-
+	data_4_tr = data_4[:, :, 1:num_samples * args["num_depth"]];
+	clamp!(data_4_tr, -0.15, 0.15);
+	trf = fit(ZScoreTransform, data_4_tr[:]);
+	data_4_tr = StatsBase.transform(trf, data_4_tr[:]);
+	data_4_tr = reshape(data_4_tr, (24, 8, args["num_depth"], 1, num_samples));
 
 	data_all = cat(data_1_tr, data_2_tr, data_3_tr, data_4_tr, dims=5);
-	#data_all = reshape(data_all, (size(data_all)[1], size(data_all)[2], size(data_all)[3], 1, size(data_all)[end]));
-	
-	# Scale data_filt to [-1.0; 1.0]
-	# data_all = 2f0 * (data_all .- minimum(data_all)) / (maximum(data_all) - minimum(data_all)) .- 1f0;
+
 
 	# Label the various classes
 	labels_1 = onehotbatch(repeat([:a], size(data_1_tr)[end]), [:a, :b, :c]);
@@ -147,22 +145,22 @@ end
 
 # ╔═╡ 89755852-cf6c-4ead-8250-38fafac37dac
 begin
-	idx = 5
-	contourf(reshape(x1[:, :, :, 1, idx], (24, 8 * args["num_depth"])), title="Class $(cat_idx_1[idx])")
+	idx = 1
+	contourf(reshape(x1[:, :, :, 1, idx], (24, 8 * args["num_depth"])), title="1 -> Class $(cat_idx_1[idx])")
 end
 
 # ╔═╡ d8fa2667-7298-4942-93f5-614efc270552
 begin
-	contourf(reshape(x2[:, :, :, 1, idx], (24, 8 * args["num_depth"])), title="Class $(cat_idx_2[idx])")
+	contourf(reshape(x2[:, :, :, 1, idx], (24, 8 * args["num_depth"])), title="2 -> Class $(cat_idx_2[idx])")
 end
 
 # ╔═╡ 93d0f66a-7d6c-4bc5-a430-1ce0329b3949
 begin
-	contourf(reshape(x3[:, :, :, 1, idx], (24, 8 * args["num_depth"])), title="Class $(cat_idx_3[idx])")
+	contourf(reshape(x3[:, :, :, 1, idx], (24, 8 * args["num_depth"])), title="3 -> Class $(cat_idx_3[idx])")
 end
 
 # ╔═╡ 60be7dbf-28d5-4c16-8672-fe30a3eba16f
-cat_idx_1
+
 
 # ╔═╡ 22576c6e-c64a-473c-b1c6-4078e5015fee
 sum(cat_idx_1 .== 1), sum(cat_idx_1 .== 2), sum(cat_idx_1 .== 3)
@@ -178,7 +176,7 @@ sum(cat_idx_4 .== 1), sum(cat_idx_4 .== 2), sum(cat_idx_4 .== 3)
 
 # ╔═╡ 85d377f4-e274-499e-8979-b5c2f411103c
 begin
-	contourf(reshape(x4[:, :, :, 1, idx], (24, 8 * args["num_depth"])), title="Class $(cat_idx_4[idx])")
+	contourf(reshape(x4[:, :, :, 1, idx], (24, 8 * args["num_depth"])), title="4 -> Class $(cat_idx_4[idx])")
 end
 
 # ╔═╡ 66450913-c2ad-43aa-aed8-8b46a032a338

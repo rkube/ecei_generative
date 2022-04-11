@@ -27,7 +27,7 @@ end
 # ╔═╡ 2dc5b778-579c-47dd-833a-195d2203d4f1
 begin
 	t_start = 5.0
-	t_end = 5.1
+	t_end = 6.0
 	filter_f0 = 5000
 	filter_f1 = 9000
 	shotnr = 25880
@@ -48,11 +48,11 @@ end
 # ╔═╡ 4ee73e71-b92a-477a-81f5-1e33b56a1608
 begin
 	dt = 2e-6
-	mode_t0 = 5.016
-	mode_t1 = 5.017
+	mode_t0 = t_start;
+	mode_t1 = t_start + 1e-3
 	
-	frame_0 = convert(Int, round((mode_t0 - t_start) / dt)) 
-	frame_1 = convert(Int, round((mode_t1 - t_start) / dt))
+	frame_0 = round((mode_t0 - t_start) / dt) |> Int;
+	frame_1 = round((mode_t1 - t_start) / dt) |> Int;
 end
 
 # ╔═╡ c841e1b7-51ea-409d-b381-726ca3cf2cea
@@ -85,20 +85,29 @@ contourf(data_filt[:,:, frame_0 + 18], clims=(-0.075,0.075),
 
 # ╔═╡ fe2567c4-a4e5-4e37-bb2a-656e806fffd8
 begin
-	clamp!(data_filt, -0.15, 0.15);
-	data_norm = 2f0 * (data_filt .- minimum(data_filt)) / (maximum(data_filt) - minimum(data_filt)) .- 1f0;
-	data_std = (data_filt .- mean(data_filt)) / std(data_filt);
-	0.0
+	# Plot data normalization and look at clipping
+	data_tr = clamp.(data_filt, -0.15, 0.15);
+	tr = fit(UnitRangeTransform, data_tr[:]);
+	data_unif = StatsBase.transform(tr, data_tr[:]);
+
+	tr = fit(ZScoreTransform, data_tr[:]);
+	data_std = StatsBase.transform(tr, data_tr[:]);
 end
 
-# ╔═╡ 6f651a6a-4781-4aab-9eed-484b0eef449a
-histogram(data_filt[:])
+# ╔═╡ f406951c-be9b-4262-b724-788b5f025a7c
+p = histogram(data_filt[:], title="Shot $(shotnr) - Processed")
+fname = @sprintf "%06d_hist_processed.png" shotnr
+savefig(p, fname)
 
-# ╔═╡ 3c4f0962-6f07-47ed-a1e0-d818afa5be42
-histogram(data_norm[:])
+# ╔═╡ c82d1d8f-0a82-478e-8de0-b60c264a76f6
+p = histogram(data_unif[:], title="Shot $(shotnr) - UnitRangeTransform")
+fname = @sprintf "%06d_hist_unitrg.png" shotnr
+savefig(p, fname)
 
-# ╔═╡ 25f4477d-7494-4e99-9fcb-43517d88f15c
-histogram(data_std[:])
+# ╔═╡ 6531f024-ff36-4682-82ce-9f9c57482919
+p = histogram(data_std[:], title="Shot $(shotnr) - ZScoreTransform")
+fname = @sprintf "%06d_hist_zscore.png" shotnr
+savefig(p, fname)
 
 # ╔═╡ Cell order:
 # ╠═51ca7818-6caf-11ec-341c-79ded0af6756

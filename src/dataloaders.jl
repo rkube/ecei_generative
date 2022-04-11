@@ -48,6 +48,13 @@ function ip_bad_values(field, ipol_dict)
     for bad_px in keys(ipol_dict)
 		bad_px_entries = ipol_dict[bad_px]
 
+
+		# We can't interpolate pixels that have no valid pixels as neighbors, so we skip them 
+		if length(bad_px_entries) == 0
+			field_ip[bad_px] = zero(eltype(field))
+			continue 
+		end
+
 		ip_val = 0.0
 		for J in bad_px_entries
 			ip_val += field[J]

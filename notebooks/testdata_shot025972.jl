@@ -12,6 +12,10 @@ begin
 	# Pkg.add("Plots")
 
 	using ecei_generative
+end
+
+# ╔═╡ 51ca7818-6caf-11ec-341c-79ded0af6756
+begin
 	using Plots
 	using Printf
 	using Statistics
@@ -23,12 +27,12 @@ end
 
 # ╔═╡ 2dc5b778-579c-47dd-833a-195d2203d4f1
 begin
-	t_start = 2.0
-	t_end = 3.0
-	filter_f0 = 30000
+	t_start = 4.4
+	t_end = 4.6
+	filter_f0 = 5000
 	filter_f1 = 50000
-	shotnr = 25259
-	dev = "GT"
+	shotnr = 25972
+	dev = "GR"
 	datadir = @sprintf "/home/rkube/gpfs/KSTAR/%06d" shotnr
 end
 
@@ -44,12 +48,12 @@ end
 
 # ╔═╡ 4ee73e71-b92a-477a-81f5-1e33b56a1608
 begin
-	mode_t0 = t_start
-	mode_t1 = t_start + 1e-3
 	dt = 2e-6
-
-	frame_0 = round((mode_t0 - t_start) / dt)) |> Int;
-	frame_1 = round((mode_t1 - t_start) / dt)) |> Int;
+	mode_t0 = t_start + 1e-3
+	mode_t1 = t_start + 2e-3
+	
+	frame_0 = convert(Int, round((mode_t0 - t_start) / dt)) 
+	frame_1 = convert(Int, round((mode_t1 - t_start) / dt))
 end
 
 # ╔═╡ c841e1b7-51ea-409d-b381-726ca3cf2cea
@@ -62,31 +66,25 @@ contourf(data_filt[:,:, frame_0 + 18], clims=(-0.075,0.075),
 	aspect_ratio=1)
 
 # ╔═╡ d91f1d9b-7269-4225-ad94-3853831fe617
-begin
-	ftime = mode_t0
-	anim = @animate for frame ∈ frame_0:frame_1
+ftime = mode_t0
 
+begin
+	anim = @animate for frame ∈ frame_0:frame_1
 		title_str = @sprintf "%5d %s t=%8.6fs" shotnr dev ftime
-		contourf(data_filt[:,:,frame], clims=(-0.075,0.075), 
+		contourf(data_filt[:, :, frame], clims=(-0.075,0.075), 
 			color=:bluesreds,
 			aspect_ratio=1,
 			title=title_str)
-		ftime += dt
-	end 
-	fname = @sprintf "%06d.gif" shotnr
+		global ftime += dt
+	end
+	fname = @sprintf "%06d_reorder.gif" shotnr
 	gif(anim, fname, fps=5)
 end
 
+# ╔═╡ 7267af48-9d79-4dd3-aa74-38423dfa0fe8
+# Look at the standardized histograms
 
-# ╔═╡ 2321746c-ca34-4f44-af8c-ab4b07e1d974
-begin
-	frame = frame_0 + 10
-	p = contourf(data_filt[:, :, frame],  clims=(-0.075,0.075))
-	idx = findall(x -> abs(x) < 1e-3, data_filt[:, :, frame])
-	plot!(p, [i[2] for i in idx], [i[1] for i in idx], seriestype=:scatter, color=:black, ms=8)
-	p
-end
-
+# ╔═╡ fe2567c4-a4e5-4e37-bb2a-656e806fffd8
 begin
 	# Plot data normalization and look at clipping
 	data_tr = clamp.(data_filt, -0.15, 0.15);
@@ -112,11 +110,8 @@ p = histogram(data_std[:], title="Shot $(shotnr) - ZScoreTransform")
 fname = @sprintf "%06d_hist_zscore.png" shotnr
 savefig(p, fname)
 
-
-
-
-
 # ╔═╡ Cell order:
+# ╠═51ca7818-6caf-11ec-341c-79ded0af6756
 # ╠═f533c82f-a09c-47ec-8387-50ce6efbc943
 # ╠═7d8169b8-5838-41d5-be00-c508676df9e2
 # ╠═2dc5b778-579c-47dd-833a-195d2203d4f1
@@ -126,11 +121,8 @@ savefig(p, fname)
 # ╠═c841e1b7-51ea-409d-b381-726ca3cf2cea
 # ╠═5193ed87-e280-41b4-952c-fd4fe83ce1b2
 # ╠═d91f1d9b-7269-4225-ad94-3853831fe617
-# ╠═eaad041c-bcfd-412c-9f84-7d1e4555304a
-# ╠═18c0caf8-63fa-49eb-9231-b8a80c25e81f
-# ╠═8cc3516a-c7d1-4b6a-a0d8-f506c60f12c5
-# ╠═2321746c-ca34-4f44-af8c-ab4b07e1d974
-# ╠═4cfe783d-9256-4a08-933f-5b20cc197d1c
-# ╠═93a63569-ae97-4059-859e-94db0c575737
-# ╠═fd07241d-da8e-4a86-bd4e-643fffaf3ac3
-# ╠═09361635-e427-45d3-a8b8-619ad102e405
+# ╠═7267af48-9d79-4dd3-aa74-38423dfa0fe8
+# ╠═fe2567c4-a4e5-4e37-bb2a-656e806fffd8
+# ╠═6f651a6a-4781-4aab-9eed-484b0eef449a
+# ╠═3c4f0962-6f07-47ed-a1e0-d818afa5be42
+# ╠═25f4477d-7494-4e99-9fcb-43517d88f15c
