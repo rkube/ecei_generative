@@ -27,38 +27,34 @@ end
 
 # num_depth is the number of ecei frames bundled together into a single example
 data_1 = load_from_hdf(2.6, 2.7, 35000, 50000, "/home/rkube/gpfs/KSTAR/025259", 25259, "GT");  # 3/2 island
-data_2 = load_from_hdf(2.6, 2.7, 5000, 9000, "/home/rkube/gpfs/KSTAR/022289", 22289, "GT");    # ELMs
+data_2 = load_from_hdf(2.7, 2.8, 5000, 9000, "/home/rkube/gpfs/KSTAR/022289", 22289, "GT");    # ELMs
 #data_3 = load_from_hdf(2.0, 2.1, 10000, 25000, "/home/rkube/gpfs/KSTAR/025263", 25263, "GR"); 2/1 island ?
 data_3 = load_from_hdf(5.0, 5.1, 5000, 9000, "/home/rkube/gpfs/KSTAR/025880", 25880, "GR"); # 2/1 island, slow
 
 
 # Re-order data_1 and data_2 to have multiple channels per example
 num_samples = size(data_1)[end] ÷ args["num_depth"];
-clamp(data_1, -0.15, 0.15)
 data_1_tr = data_1[:, :, 1:num_samples * args["num_depth"]];
-data_1_tr = reshape(data_1_tr, (24, 8, args["num_depth"], 1, num_samples));
-data_1_tr = 2f0 * (data_1_tr .- minimum(data_1_tr)) / (maximum(data_1_tr) - minimum(data_1_tr)) .- 1f0 |> gpu;
-#data_1_tr = (data_1_tr .- mean(data_1_tr)) / std(data_1_tr) |> gpu;
+clamp!(data_1_tr, -0.15, 0.15);
+trf = fit(ZScoreTransform, data_1_tr[:]);
+data_1_tr = StatsBase.transform(trf, data_1_tr[:]);
+data_1_tr = reshape(data_1_tr, (24, 8, args["num_depth"], 1, num_samples)) |> gpu;
 
 num_samples = size(data_2)[end] ÷ args["num_depth"];
-clamp(data_2, -0.15, 0.15)
 data_2_tr = data_2[:, :, 1:num_samples * args["num_depth"]];
-data_2_tr = reshape(data_2_tr, (24, 8, args["num_depth"], 1, num_samples));
-data_2_tr = 2f0 * (data_2_tr .- minimum(data_2_tr)) / (maximum(data_2_tr) - minimum(data_2_tr)) .- 1f0 |> gpu;
-#data_2_tr = (data_2_tr .- mean(data_2_tr)) / std(data_2_tr) |> gpu;
+clamp!(data_2_tr, -0.15, 0.15);
+trf = fit(ZScoreTransform, data_2_tr[:]);
+data_2_tr = StatsBase.transform(trf, data_2_tr[:]);
+data_2_tr = reshape(data_2_tr, (24, 8, args["num_depth"], 1, num_samples)) |> gpu;
 
 num_samples = size(data_3)[end] ÷ args["num_depth"];
-clamp(data_3, -0.15, 0.15)
 data_3_tr = data_3[:, :, 1:num_samples * args["num_depth"]];
-data_3_tr = reshape(data_3_tr, (24, 8, args["num_depth"], 1, num_samples));
-data_3_tr[isnan.(data_3_tr)] .= 0f0;
-data_3_tr = 2f0 * (data_3_tr .- minimum(data_3_tr)) / (maximum(data_3_tr) - minimum(data_3_tr)) .- 1f0 |> gpu;
-#data_3_tr = (data_3_tr .- mean(data_3_tr)) / std(data_3_tr) |> gpu;
+clamp!(data_3_tr, -0.15, 0.15);
+trf = fit(ZScoreTransform, data_3_tr[:]);
+data_3_tr = StatsBase.transform(trf, data_3_tr[:]);
+data_3_tr = reshape(data_3_tr, (24, 8, args["num_depth"], 1, num_samples)) |> gpu;
 
 data_all = cat(data_1_tr, data_2_tr, data_3_tr, dims=5);
-
-# Scale data_filt to [-1.0; 1.0]
-#data_all = 2f0 * (data_all .- minimum(data_all)) / (maximum(data_all) - minimum(data_all)) .- 1f0 |> gpu; 
 
 # Label the various classes
 labels_1 = onehotbatch(repeat([:a], size(data_1)[end]), [:a, :b, :c]) |> gpu;
@@ -78,7 +74,6 @@ loader_train = DataLoader((data_all[:, :, :, :, idx_train], labels_all[:, idx_tr
 loader_test = DataLoader((data_all[:, :, :, :, idx_test], labels_all[:, idx_test]), batchsize=args["batch_size"], shuffle=true);
 
 model = get_ddc_v1(args) |> gpu;
-
 
 opt = getfield(Flux, Symbol(args["opt"]))(args["lr"], Tuple(args["beta"]));
 ps = Flux.params(model);

@@ -12,7 +12,7 @@
     "maxpool_size_W": [1, 1],
     "maxpool_size_D": [1, 1],
     "fc_size": 100,
-    "num_channels": [64, 128], 
+    "num_channels": [32, 64], 
     "opt": "ADAM", 
     "lr": 0.001, 
     "beta": [0.9, 0.999] 

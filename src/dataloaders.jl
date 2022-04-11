@@ -123,6 +123,7 @@ function load_from_hdf(t_start, t_end, f_filt_lo, f_filt_hi, datadir, shotnr, de
             frames_raw[:, ch_v, ch_h] = A[tidx_all] * 1e-4
 	    end
 	end
+    println("Read data from hdf5")
 
     # Calculate offsets, normalize, etc.
 	# Normalize
