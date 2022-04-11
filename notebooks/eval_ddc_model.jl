@@ -50,6 +50,7 @@ begin
 	data_2 = load_from_hdf(2.6, 2.7, 5000, 9000, "/home/rkube/gpfs/KSTAR/022289", 22289, "GT"); # ELM
 	data_3 = load_from_hdf(5.0, 5.1, 5000, 9000, "/home/rkube/gpfs/KSTAR/025880", 25880, "GR"); # 2/1 MI
 	data_4 = load_from_hdf(5.9, 6.0, 35000, 50000, "/home/rkube/gpfs/KSTAR/025260", 25260, "GT"); # Another 3/2 MI, not trained on
+	
 	0.0
 end
 

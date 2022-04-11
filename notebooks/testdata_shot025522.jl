@@ -49,8 +49,8 @@ begin
 	mode_t1 = 4.1002
 	dt = 2e-6
 
-	frame_0 = convert(Int, round((mode_t0 - 4.0) / dt))
-	frame_1 = convert(Int, round((mode_t1 - 4.0) / dt))
+	frame_0 = round((mode_t0 - 4.0) / dt) |> Int;
+	frame_1 = round((mode_t1 - 4.0) / dt) |> Int;
 end
 
 # ╔═╡ c841e1b7-51ea-409d-b381-726ca3cf2cea

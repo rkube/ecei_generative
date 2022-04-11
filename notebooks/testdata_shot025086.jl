@@ -45,8 +45,8 @@ end
 
 # ╔═╡ 4ee73e71-b92a-477a-81f5-1e33b56a1608
 begin
-	mode_t0 = 4.154
-	mode_t1 = 4.155
+	mode_t0 = t_start
+	mode_t1 = t_start + 1e-3
 	dt = 2e-6
 
 	frame_0 = round((mode_t0 - 4.0) / dt) |> Int;

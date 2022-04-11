@@ -51,8 +51,8 @@ begin
 	mode_t0 = 2.716
 	mode_t1 = 2.718
 
-	frame_0 = convert(Int, round((mode_t0 - t_start) / dt)) 
-	frame_1 = convert(Int, round((mode_t1 - t_start) / dt))
+	frame_0 = round((mode_t0 - t_start) / dt) |> Int;
+	frame_1 = round((mode_t1 - t_start) / dt) |> Int;
 end
 
 # ╔═╡ c841e1b7-51ea-409d-b381-726ca3cf2cea

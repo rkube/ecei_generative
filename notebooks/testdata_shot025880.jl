@@ -48,11 +48,11 @@ end
 # ╔═╡ 4ee73e71-b92a-477a-81f5-1e33b56a1608
 begin
 	dt = 2e-6
-	mode_t0 = 5.016
-	mode_t1 = 5.017
+	mode_t0 = t_start;
+	mode_t1 = t_start + 1e-3
 	
-	frame_0 = convert(Int, round((mode_t0 - t_start) / dt)) 
-	frame_1 = convert(Int, round((mode_t1 - t_start) / dt))
+	frame_0 = round((mode_t0 - t_start) / dt) |> Int;
+	frame_1 = round((mode_t1 - t_start) / dt) |> Int;
 end
 
 # ╔═╡ c841e1b7-51ea-409d-b381-726ca3cf2cea
