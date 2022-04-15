@@ -48,7 +48,7 @@ end
 
 
 # Find the mapping of data to cluster assignment that maximizes the number of correct assignments across classes
-function map_data_to_labels2(data_list, labels)
+function map_data_to_labels(data_list, labels)
     maxsum = -1
     best_idx = -1
     now_idx = 1

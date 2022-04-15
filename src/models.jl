@@ -164,7 +164,7 @@ function get_generator_3d(args)
                  Dense(512, init_size_H * init_size_W * init_size_D * args["num_channels"][4], act, init=Flux.kaiming_uniform),
                  Dropout(0.2),
                  # Re-shape to be used as input for transpose convolutions
-                 x -> reshape(x, (init_size_H, init_size_W, init_size_D, args[e"num_channels"][4], :)),
+                 x -> reshape(x, (init_size_H, init_size_W, init_size_D, args["num_channels"][4], :)),
                  ConvTranspose(filter_size_list[4], args["num_channels"][4] => args["num_channels"][3], act, bias=false, init=Flux.kaiming_uniform),
                  ConvTranspose(filter_size_list[3], args["num_channels"][3] => args["num_channels"][2], act, bias=false, init=Flux.kaiming_uniform),
                  ConvTranspose(filter_size_list[2], args["num_channels"][2] => args["num_channels"][1], act, bias=false, init=Flux.kaiming_uniform),

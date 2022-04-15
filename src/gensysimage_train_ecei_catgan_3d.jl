@@ -1,5 +1,6 @@
-# Train a categorical classifier GAN: on ECEi data
-# https://arxiv.org/abs/1511.06390
+#  2022-04-15 I used this file to generate a sysimage to be used for 
+#
+# 
 # 
 using Flux
 using Flux.Data: DataLoader
@@ -18,14 +19,10 @@ using Images
 using BSON: @save
 
 
-using PyCall
-using Wandb
-
 using ecei_generative
 
 # Set up logging and pycall
 
-np = pyimport("numpy")                    
 open("config.json", "r") do io
     global args = JSON.parse(io)
 end
@@ -69,18 +66,17 @@ loader_3 = DataLoader((data_3_tr[:, :, :, :, num_train_3 + 1:end], labels_3[:, n
 D = get_cat_discriminator_3d(args) |> gpu;
 G = get_generator_3d(args) |> gpu;
 
-opt_D = getfield(Flux, Symbol(args["opt_D"]))(args["lr_D"], Tuple(args["beta_D"]));
-opt_G = getfield(Flux, Symbol(args["opt_G"]))(args["lr_G"], Tuple(args["beta_D"]));
+opt_D = getfield(Flux, Symbol(args["opt_D"]))(0.0)
+opt_G = getfield(Flux, Symbol(args["opt_G"]))(0.0)
 
 ps_D = Flux.params(D);
 ps_G = Flux.params(G);
 
 epoch_size = length(loader_train);
 
-wb_logger = WandbLogger(project="ecei_catgan_3", entity="rkube", config=args)
 
 num_batch = 1
-for epoch ∈ 1:args["num_epochs"]
+for epoch ∈ 1:1
     @show epoch
     for (x, y) ∈ loader_train
         this_batch = size(x)[end]
@@ -110,69 +106,7 @@ for epoch ∈ 1:args["num_epochs"]
         grads_G = back_G(one(loss_G));
         Flux.update!(opt_G, ps_G, grads_G)
 
-        if num_batch % 25 == 0
-            (x_test, y_test) = first(loader_test);
-            testmode!(G);
-            testmode!(D);
-            y_real = D(x_test);
-            z = randn(Float32, args["latent_dim"], this_batch) |> gpu;
-            y_fake = D(G(z));
-            xentropy = Flux.Losses.binarycrossentropy(y_real, y_test)
-
-            # Get predictions for the training data
-            (x1, _) = first(loader_1);
-            (x2, _) = first(loader_2);
-            (x3, _) = first(loader_3);
-            ypred_1 = onecold(D(x1), [:a, :b, :c])
-            ypred_2 = onecold(D(x2), [:a, :b, :c])
-            ypred_3 = onecold(D(x3), [:a, :b, :c])
-            pred_list = [ypred_1, ypred_2, ypred_3]
-
-            cluster_assignments = map_data_to_labels(pred_list, [:a, :b, :c])
-            cluster_accuracy = sum([sum(y .== assgn) for (y, assgn) in zip(pred_list, cluster_assignments)]) / sum(length(y) for y in pred_list)
-
-            y_real = y_real |> cpu;
-            y_fake = y_fake |> cpu;
-            grads_D1 = grads_D[ps_D[1]][:] |> cpu;
-            grads_D4 = grads_D[ps_D[4]][:] |> cpu;
-            grads_G1 = grads_G[ps_G[1]][:] |> cpu;
-            grads_G4 = grads_G[ps_G[4]][:] |> cpu;
-
-            img = channelview(fake_image_3d(G, args, 16));
-            img = permutedims(img, (3,1,2));
-
-            @show cluster_accuracy
-
-            #Wandb.log(wb_logger, Dict("batch" => num_batch, 
-            #                          "crossentropy" => xentropy,
-            #                          "cluster_accuracy" => cluster_accuracy,
-            #                          "hist_gradD_1" => Wandb.Histogram(grads_D1),
-            #                          "hist_gradD_4" => Wandb.Histogram(grads_D4),
-            #                          "hist_gradG_1" => Wandb.Histogram(grads_G1),
-            #                          "hist_gradG_4" => Wandb.Histogram(grads_D4),
-            #                          "hist y_real" => Wandb.Histogram(y_real),
-            #                          "hist y_fake" => Wandb.Histogram(y_fake),
-            #                          "H_real" => -H_of_p(y_real),
-            #                          "E_real" => E_of_H_of_p(y_real),
-            #                          "E_fake" => E_of_H_of_p(y_fake),
-            #                          "Generator" => Wandb.Image(img)))
-        end
-        global num_batch += 1;
+       global num_batch += 1;
     end
-    #D_c = D |> cpu;
-    #G_c = G |> cpu;
-    #@save "/home/rkube/gpfs/catgan_epoch$(epoch).bson" D_c G_c
 end
-
-close(wb_logger)
-
-# test how well we predict class on the training loader:
-#(x,y) = first(loader_train);
-
-#preds = Flux.onecold(D(x), [:a, :b, :c]);
-#preds .== Flux.onecold(y, [:a, :b, :c])
-
-#D_c = D|> cpu;
-#G_c = G|> cpu;
-#@save "/home/rkube/gpfs/catgan.bson" D_c G_c
 
