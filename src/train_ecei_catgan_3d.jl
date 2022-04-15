@@ -10,6 +10,7 @@ using Random
 using StatsBase
 using LinearAlgebra
 using Logging
+using Combinatorics
 using JSON
 using FileIO
 using ColorSchemes
@@ -31,14 +32,14 @@ end
 
 # num_depth is the number of ecei frames bundled together into a single example
 #data_1 = load_from_hdf(2.6, 2.7, 35000, 50000, "/home/rkube/gpfs/KSTAR/025259", 25259, "GT");
-data_1 = load_from_hdf(5.9, 6.0, 35000, 50000, "/home/rkube/gpfs/KSTAR/025260", 25260, "GT");
-data_2 = load_from_hdf(5.4, 5.5, 5000, 10000, "/home/rkube/gpfs/KSTAR/025880", 25880, "GR");
-data_3 = load_from_hdf(2.6, 2.7, 5000, 9000, "/home/rkube/gpfs/KSTAR/022289", 22289, "GT");
+data_1 = load_from_hdf(5.9, 6.1, 35000, 50000, "/home/rkube/gpfs/KSTAR/025260", 25260, "GT");
+data_2 = load_from_hdf(5.4, 5.6, 5000, 10000, "/home/rkube/gpfs/KSTAR/025880", 25880, "GR");
+data_3 = load_from_hdf(2.6, 2.8, 5000, 9000, "/home/rkube/gpfs/KSTAR/022289", 22289, "GT");
 
-data_1_tr = transform_dataset(data_1, args);
-data_2_tr = transform_dataset(data_2, args);
-data_3_tr = transform_dataset(data_3, args);
-data_all = cat(data_1_tr, data_2_tr, data_3_tr, dims=ndims(data_1_tr)) |> gpu;
+data_1_tr = transform_dataset(data_1, args) |> gpu;
+data_2_tr = transform_dataset(data_2, args) |> gpu;
+data_3_tr = transform_dataset(data_3, args) |> gpu;
+data_all = cat(data_1_tr, data_2_tr, data_3_tr, dims=ndims(data_1_tr));
 
 # Label the various classes
 labels_1 = onehotbatch(repeat([:a], size(data_1_tr)[end]), [:a, :b, :c]) |> gpu;
@@ -48,7 +49,7 @@ labels_all = cat(labels_1, labels_2, labels_3, dims=2);
 
 
 # Train / test split
-split_ratio = 0.8
+split_ratio = 0.5
 num_samples = size(data_all)[end]
 num_train = round(split_ratio * num_samples) |> Int
 idx_all = randperm(num_samples);      # Random indices for all samples
@@ -57,6 +58,11 @@ idx_test = idx_all[num_train:end];    # Indices for test set
 
 loader_train = DataLoader((data_all[:, :, :, :, idx_train], labels_all[:, idx_train]), batchsize=args["batch_size"], shuffle=true);
 loader_test = DataLoader((data_all[:, :, :, :, idx_test], labels_all[:, idx_test]), batchsize=args["batch_size"], shuffle=true);
+
+loader_1 = DataLoader((data_1_tr, labels_1), batchsize=args["batch_size"], shuffle=true);
+loader_2 = DataLoader((data_2_tr, labels_2), batchsize=args["batch_size"], shuffle=true);
+loader_3 = DataLoader((data_3_tr, labels_3), batchsize=args["batch_size"], shuffle=true);
+
 
 D = get_cat_discriminator_3d(args) |> gpu;
 G = get_generator_3d(args) |> gpu;
@@ -69,8 +75,8 @@ ps_G = Flux.params(G);
 
 epoch_size = length(loader_train);
 
-wb_logger = WandbLogger(project="ecei_catgan_3", entity="rkube", config=args)
-np = pyimport("numpy")                    
+#wb_logger = WandbLogger(project="ecei_catgan_3", entity="rkube", config=args)
+#np = pyimport("numpy")                    
 
 num_batch = 1
 for epoch ∈ 1:args["num_epochs"]
@@ -110,8 +116,19 @@ for epoch ∈ 1:args["num_epochs"]
             y_real = D(x_test);
             z = randn(Float32, args["latent_dim"], this_batch) |> gpu;
             y_fake = D(G(z));
-
             xentropy = Flux.Losses.binarycrossentropy(y_real, y_test)
+
+            # Get predictions for the training data
+            (x1, _) = first(loader_1);
+            (x2, _) = first(loader_2);
+            (x3, _) = first(loader_3);
+            ypred_1 = onecold(D(x1), [:a, :b, :c])
+            ypred_2 = onecold(D(x2), [:a, :b, :c])
+            ypred_3 = onecold(D(x3), [:a, :b, :c])
+            pred_list = [ypred_1, ypred_2, ypred_3]
+
+            cluster_assignments = map_data_to_labels(pred_list, [:a, :b, :c])
+            cluster_accuracy = sum([sum(y .== assgn) for (y, assgn) in zip(pred_list, cluster_assignments)]) / sum(length(y) for y in pred_list)
 
             y_real = y_real |> cpu;
             y_fake = y_fake |> cpu;
@@ -123,34 +140,38 @@ for epoch ∈ 1:args["num_epochs"]
             img = channelview(fake_image_3d(G, args, 16));
             img = permutedims(img, (3,1,2));
 
-            Wandb.log(wb_logger, Dict("batch" => num_batch, 
-                                      "crossentropy" => xentropy,
-                                      "hist_gradD_1" => Wandb.Histogram(grads_D1),
-                                      "hist_gradD_4" => Wandb.Histogram(grads_D4),
-                                      "hist_gradG_1" => Wandb.Histogram(grads_G1),
-                                      "hist_gradG_4" => Wandb.Histogram(grads_D4),
-                                      "hist y_real" => Wandb.Histogram(y_real),
-                                      "hist y_fake" => Wandb.Histogram(y_fake),
-                                      "H_real" => -H_of_p(y_real),
-                                      "E_real" => E_of_H_of_p(y_real),
-                                      "E_fake" => E_of_H_of_p(y_fake),
-                                      "Generator" => Wandb.Image(img)))
+            @show cluster_accuracy
+
+            #Wandb.log(wb_logger, Dict("batch" => num_batch, 
+            #                          "crossentropy" => xentropy,
+            #                          "cluster_accuracty" => cluster_accuracy,
+            #                          "hist_gradD_1" => Wandb.Histogram(grads_D1),
+            #                          "hist_gradD_4" => Wandb.Histogram(grads_D4),
+            #                          "hist_gradG_1" => Wandb.Histogram(grads_G1),
+            #                          "hist_gradG_4" => Wandb.Histogram(grads_D4),
+            #                          "hist y_real" => Wandb.Histogram(y_real),
+            #                          "hist y_fake" => Wandb.Histogram(y_fake),
+            #                          "H_real" => -H_of_p(y_real),
+            #                          "E_real" => E_of_H_of_p(y_real),
+            #                          "E_fake" => E_of_H_of_p(y_fake),
+            #                          "Generator" => Wandb.Image(img)))
         end
         global num_batch += 1;
     end
-    D_c = D |> cpu;
-    G_c = G |> cpu;
-    @save "/home/rkube/gpfs/catgan_epoch$(epoch).bson" D_c G_c
+    #D_c = D |> cpu;
+    #G_c = G |> cpu;
+    #@save "/home/rkube/gpfs/catgan_epoch$(epoch).bson" D_c G_c
 end
 
-close(wb_logger)
+#close(wb_logger)
 
 # test how well we predict class on the training loader:
-(x,y) = first(loader_train);
-preds = Flux.onecold(D(x), [:a, :b, :c]);
-preds .== Flux.onecold(y, [:a, :b, :c])
+#(x,y) = first(loader_train);
 
-D_c = D|> cpu;
-G_c = G|> cpu;
-@save "/home/rkube/gpfs/catgan.bson" D_c G_c
+#preds = Flux.onecold(D(x), [:a, :b, :c]);
+#preds .== Flux.onecold(y, [:a, :b, :c])
+
+#D_c = D|> cpu;
+#G_c = G|> cpu;
+#@save "/home/rkube/gpfs/catgan.bson" D_c G_c
 

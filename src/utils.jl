@@ -1,11 +1,12 @@
 # Utility function
 
-export plot_fake, fake_image, fake_image_3d, conv_layer_size
+export plot_fake, fake_image, fake_image_3d, map_data_to_labels, conv_layer_size
 
 using Statistics
 using FileIO
 using ColorSchemes
 using Images
+using Combinatorics
 
 function fake_image(G, args, num_samples)
     # Generate num_samples samples from the generator G, concatenated along horizontal dimension
@@ -43,7 +44,28 @@ function fake_image_3d(G, args, num_samples)
     end
     img_array = map(clamp01nan, img_array);
 end
-    
+
+
+
+# Find the mapping of data to cluster assignment that maximizes the number of correct assignments across classes
+function map_data_to_labels2(data_list, labels)
+    maxsum = -1
+    best_idx = -1
+    now_idx = 1
+    for perm in permutations(labels)
+        # Calculate the sum of correct assignments using this permutation and keep score.
+        # Permutation with the largest sum wins
+        current_sum = sum([sum(y .== p) for (y,p) in zip(data_list, perm)])
+
+        if current_sum > maxsum
+            maxsum = current_sum
+            best_idx = now_idx
+        end
+        now_idx += 1
+    end
+    cluster_perm = collect(permutations(labels))[best_idx]
+    return(cluster_perm)
+end
 
 # Calculates the size of a convolution layer given
 # W: Width of the input array

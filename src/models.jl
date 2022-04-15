@@ -158,13 +158,13 @@ function get_generator_3d(args)
     init_size_D = reduce((W, S) -> conv_layer_size(W, S...),
                           [(w, 1) for w in args["filter_size_D"]], init=args["num_depth"])
 
-    return Chain(Dense(args["latent_dim"], 512, act, bias=false),
+    return Chain(Dense(args["latent_dim"], 512, act, init=Flux.kaiming_uniform),
                  Dropout(0.2),
                  # First layer is from hard-coded 512 to the initial size of the image
                  Dense(512, init_size_H * init_size_W * init_size_D * args["num_channels"][4], act, init=Flux.kaiming_uniform),
                  Dropout(0.2),
                  # Re-shape to be used as input for transpose convolutions
-                 x -> reshape(x, (init_size_H, init_size_W, init_size_D, args["num_channels"][4], :)),
+                 x -> reshape(x, (init_size_H, init_size_W, init_size_D, args[e"num_channels"][4], :)),
                  ConvTranspose(filter_size_list[4], args["num_channels"][4] => args["num_channels"][3], act, bias=false, init=Flux.kaiming_uniform),
                  ConvTranspose(filter_size_list[3], args["num_channels"][3] => args["num_channels"][2], act, bias=false, init=Flux.kaiming_uniform),
                  ConvTranspose(filter_size_list[2], args["num_channels"][2] => args["num_channels"][1], act, bias=false, init=Flux.kaiming_uniform),
