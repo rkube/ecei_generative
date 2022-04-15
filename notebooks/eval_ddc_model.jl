@@ -38,8 +38,6 @@ begin
 	Core.eval(Main, :(import NNlib))
 end
 
-# ╔═╡ 4ef20265-cd6e-4df7-9d82-8bc865160e9d
-193*2.0/3.0
 
 # ╔═╡ 763d9fe2-df79-4ff9-9bda-ee7a17c61d2b
 args = Dict("num_depth" => 10, "batch_size" => 256, "num_classes" => 3)
