@@ -143,19 +143,19 @@ for epoch ∈ 1:args["num_epochs"]
 
             @show cluster_accuracy
 
-            #Wandb.log(wb_logger, Dict("batch" => num_batch, 
-            #                          "crossentropy" => xentropy,
-            #                          "cluster_accuracy" => cluster_accuracy,
-            #                          "hist_gradD_1" => Wandb.Histogram(grads_D1),
-            #                          "hist_gradD_4" => Wandb.Histogram(grads_D4),
-            #                          "hist_gradG_1" => Wandb.Histogram(grads_G1),
-            #                          "hist_gradG_4" => Wandb.Histogram(grads_D4),
-            #                          "hist y_real" => Wandb.Histogram(y_real),
-            #                          "hist y_fake" => Wandb.Histogram(y_fake),
-            #                          "H_real" => -H_of_p(y_real),
-            #                          "E_real" => E_of_H_of_p(y_real),
-            #                          "E_fake" => E_of_H_of_p(y_fake),
-            #                          "Generator" => Wandb.Image(img)))
+            Wandb.log(wb_logger, Dict("batch" => num_batch, 
+                                      "crossentropy" => xentropy,
+                                      "cluster_accuracy" => cluster_accuracy,
+                                      "hist_gradD_1" => Wandb.Histogram(grads_D1),
+                                      "hist_gradD_4" => Wandb.Histogram(grads_D4),
+                                      "hist_gradG_1" => Wandb.Histogram(grads_G1),
+                                      "hist_gradG_4" => Wandb.Histogram(grads_D4),
+                                      "hist y_real" => Wandb.Histogram(y_real),
+                                      "hist y_fake" => Wandb.Histogram(y_fake),
+                                      "H_real" => -H_of_p(y_real),
+                                      "E_real" => E_of_H_of_p(y_real),
+                                      "E_fake" => E_of_H_of_p(y_fake),
+                                      "Generator" => Wandb.Image(img)))
         end
         global num_batch += 1;
     end
@@ -165,14 +165,4 @@ for epoch ∈ 1:args["num_epochs"]
 end
 
 close(wb_logger)
-
-# test how well we predict class on the training loader:
-#(x,y) = first(loader_train);
-
-#preds = Flux.onecold(D(x), [:a, :b, :c]);
-#preds .== Flux.onecold(y, [:a, :b, :c])
-
-#D_c = D|> cpu;
-#G_c = G|> cpu;
-#@save "/home/rkube/gpfs/catgan.bson" D_c G_c
 
