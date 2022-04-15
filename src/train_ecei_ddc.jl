@@ -13,8 +13,8 @@ using Logging
 using JSON
 using BSON: @save
 
-#using PyCall
-#using Wandb
+using PyCall
+using Wandb
 
 using ecei_generative
 
