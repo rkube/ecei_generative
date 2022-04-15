@@ -1,6 +1,9 @@
+# Train Deep-divergence cluster model on ECEi data
+# https://arxiv.org/abs/1902.04981
+
 using Flux
 using Flux.Data: DataLoader
-using Flux: onehotbatch
+using Flux: onehotbatch, onecold
 using CUDA
 using Zygote
 using Random
@@ -26,52 +29,39 @@ end
 
 
 # num_depth is the number of ecei frames bundled together into a single example
-data_1 = load_from_hdf(2.6, 2.7, 35000, 50000, "/home/rkube/gpfs/KSTAR/025259", 25259, "GT");  # 3/2 island
-data_2 = load_from_hdf(2.7, 2.8, 5000, 9000, "/home/rkube/gpfs/KSTAR/022289", 22289, "GT");    # ELMs
-#data_3 = load_from_hdf(2.0, 2.1, 10000, 25000, "/home/rkube/gpfs/KSTAR/025263", 25263, "GR"); 2/1 island ?
-data_3 = load_from_hdf(5.0, 5.1, 5000, 9000, "/home/rkube/gpfs/KSTAR/025880", 25880, "GR"); # 2/1 island, slow
+data_1 = load_from_hdf(5.9, 6.1, 35000, 50000, "/home/rkube/gpfs/KSTAR/025260", 25260, "GT");
+data_2 = load_from_hdf(5.4, 5.6, 5000, 10000, "/home/rkube/gpfs/KSTAR/025880", 25880, "GR");
+data_3 = load_from_hdf(2.6, 2.8, 5000, 9000, "/home/rkube/gpfs/KSTAR/022289", 22289, "GT");
 
-
-# Re-order data_1 and data_2 to have multiple channels per example
-num_samples = size(data_1)[end] ÷ args["num_depth"];
-data_1_tr = data_1[:, :, 1:num_samples * args["num_depth"]];
-clamp!(data_1_tr, -0.15, 0.15);
-trf = fit(ZScoreTransform, data_1_tr[:]);
-data_1_tr = StatsBase.transform(trf, data_1_tr[:]);
-data_1_tr = reshape(data_1_tr, (24, 8, args["num_depth"], 1, num_samples)) |> gpu;
-
-num_samples = size(data_2)[end] ÷ args["num_depth"];
-data_2_tr = data_2[:, :, 1:num_samples * args["num_depth"]];
-clamp!(data_2_tr, -0.15, 0.15);
-trf = fit(ZScoreTransform, data_2_tr[:]);
-data_2_tr = StatsBase.transform(trf, data_2_tr[:]);
-data_2_tr = reshape(data_2_tr, (24, 8, args["num_depth"], 1, num_samples)) |> gpu;
-
-num_samples = size(data_3)[end] ÷ args["num_depth"];
-data_3_tr = data_3[:, :, 1:num_samples * args["num_depth"]];
-clamp!(data_3_tr, -0.15, 0.15);
-trf = fit(ZScoreTransform, data_3_tr[:]);
-data_3_tr = StatsBase.transform(trf, data_3_tr[:]);
-data_3_tr = reshape(data_3_tr, (24, 8, args["num_depth"], 1, num_samples)) |> gpu;
-
-data_all = cat(data_1_tr, data_2_tr, data_3_tr, dims=5);
+data_1_tr = transform_dataset(data_1, args) |> gpu;
+data_2_tr = transform_dataset(data_2, args) |> gpu;
+data_3_tr = transform_dataset(data_3, args) |> gpu;
 
 # Label the various classes
-labels_1 = onehotbatch(repeat([:a], size(data_1)[end]), [:a, :b, :c]) |> gpu;
-labels_2 = onehotbatch(repeat([:b], size(data_2)[end]), [:a, :b, :c]) |> gpu;
-labels_3 = onehotbatch(repeat([:c], size(data_3)[end]), [:a, :b, :c]) |> gpu;
-labels_all = cat(labels_1, labels_2, labels_3, dims=2);
+labels_1 = onehotbatch(repeat([:a], size(data_1_tr)[end]), [:a, :b, :c]) |> gpu;
+labels_2 = onehotbatch(repeat([:b], size(data_1_tr)[end]), [:a, :b, :c]) |> gpu;
+labels_3 = onehotbatch(repeat([:c], size(data_3_tr)[end]), [:a, :b, :c]) |> gpu;
 
 # Train / test split
-split_ratio = 0.8 
-num_samples = size(data_all)[5]
-num_train = round(split_ratio * num_samples) |> Int 
-idx_all = randperm(num_samples);      # Random indices for all samples
-idx_train = idx_all[1:num_train];     # Indices for training set
-idx_test = idx_all[num_train:end];    # Indices for test set
+split_ratio = 0.5    
+# Calculate number of training / validation points from each individual dataset
+num_train_1 = round(size(data_1_tr)[end] * split_ratio) |> Int 
+num_train_2 = round(size(data_2_tr)[end] * split_ratio) |> Int 
+num_train_3 = round(size(data_3_tr)[end] * split_ratio) |> Int 
 
-loader_train = DataLoader((data_all[:, :, :, :, idx_train], labels_all[:, idx_train]), batchsize=args["batch_size"], shuffle=true);
-loader_test = DataLoader((data_all[:, :, :, :, idx_test], labels_all[:, idx_test]), batchsize=args["batch_size"], shuffle=true);
+# One train loader that yields random samples from all data sets
+data_train = cat(data_1_tr[:,:,:,:,1:num_train_1], data_2_tr[:,:,:,:,1:num_train_2], data_3_tr[:,:,:,:,1:num_train_3], dims=5);
+labels_train = cat(labels_1[:, 1:num_train_1], labels_2[:, 1:num_train_2], labels_3[:, 1:num_train_3], dims=2);
+loader_train = DataLoader((data_train, labels_train ), batchsize=args["batch_size"], shuffle=true);
+
+data_test= cat(data_1_tr[:,:,:,:,num_train_1 + 1:end], data_2_tr[:,:,:,:,num_train_2 + 1:end], data_3_tr[:,:,:,:,num_train_3 + 1:end], dims=5);
+labels_test = cat(labels_1[:, num_train_1 + 1:end], labels_2[:, num_train_2 + 1:end], labels_3[:, num_train_3 + 1:end], dims=2);
+loader_test = DataLoader((data_train, labels_train ), batchsize=args["batch_size"], shuffle=true);
+
+# Loader for verification give samples from individual datasets. These samples are not to be included in loader_train
+loader_1 = DataLoader((data_1_tr[:, :, :, :, num_train_1 + 1:end], labels_1[:, num_train_1 + 1:end]), batchsize=args["batch_size"], shuffle=true);
+loader_2 = DataLoader((data_2_tr[:, :, :, :, num_train_2 + 1:end], labels_2[:, num_train_2 + 1:end]), batchsize=args["batch_size"], shuffle=true);
+loader_3 = DataLoader((data_3_tr[:, :, :, :, num_train_3 + 1:end], labels_3[:, num_train_3 + 1:end]), batchsize=args["batch_size"], shuffle=true);
 
 model = get_ddc_v1(args) |> gpu;
 
@@ -131,16 +121,26 @@ for epoch ∈ 1:args["num_epochs"]
         end         
         grads = back(one(loss))
         Flux.update!(opt, ps, grads)
+
+        if iter % 100 == 0
+            # Get label predictions from test data for each of the 3 different datasets
+            pred_list = []
+            for loader in [loader_1, loader_2, loader_3]
+                (x, _) = first(loader)
+                push!(pred_list, onecold(model(x)[end - args["num_classes"] + 1: end, :], [:a, :b, :c]))
+            end
+
+            cluster_assignments = map_data_to_labels(pred_list, [:a, :b, :c])
+            cluster_accuracy = sum([sum(y .== assgn) for (y, assgn) in zip(pred_list, cluster_assignments)]) / sum(length(y) for y in pred_list)
+            @show iter, cluster_accuracy
+        end
+
         global iter += 1;
     end     
-
-    # Show class assignments in the batch
-    (x,y)  = first(loader_train)
-    @show sum(model(x)[end - args["num_classes"] + 1:end, :], dims=2)'
 end
 
-model_c = model |> cpu;
-@save "/home/rkube/gpfs/model.bson" model_c
+#model_c = model |> cpu;
+#@save "/home/rkube/gpfs/model.bson" model_c
 
 
 
