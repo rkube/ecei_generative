@@ -1,9 +1,11 @@
 using HDF5
 using Printf
 using Statistics
+using StatsBase
 using DSP
 
-export generate_ip_index_set, ip_bad_values, get_framedata, load_from_hdf
+
+export generate_ip_index_set, ip_bad_values, transform_dataset, get_framedata, load_from_hdf
 
 """
    Returns a list of indices that are to be used for interpolation around bad channels.
@@ -79,6 +81,19 @@ function get_framedata(shotnr=25259, dev="GT", chunk=137, datadir="/home/rkube/r
    frame_data = permutedims(fid[dset_name][:,:,:], [3, 2, 1])
    close(fid)
    convert(Array{Float32, 3}, frame_data)
+end
+
+
+"""
+Transforms and reshapes dataset. UnitRangeTransform is hardcoded.
+"""
+function transform_dataset(data_raw, args)
+    num_samples = size(data_raw)[end] ÷ args["num_depth"];
+    data_tr = data_raw[:, :, 1:num_samples * args["num_depth"]];
+    clamp!(data_tr, -0.15, 0.15);
+    trf = fit(UnitRangeTransform, data_tr[:]);
+    data_tr = StatsBase.transform(trf, data_tr[:]);
+    return reshape(data_tr, (24, 8, args["num_depth"], 1, num_samples));
 end
 
 

@@ -3,7 +3,7 @@
 # 
 using Flux
 using Flux.Data: DataLoader
-using Flux: onehotbatch
+using Flux: onehotbatch, onecold
 using CUDA
 using Zygote
 using Random
@@ -11,6 +11,11 @@ using StatsBase
 using LinearAlgebra
 using Logging
 using JSON
+using FileIO
+using ColorSchemes
+using Images
+using BSON: @save
+
 
 using PyCall
 using Wandb
@@ -24,35 +29,22 @@ open("config.json", "r") do io
 end
 
 
-wb_logger = WandbLogger(project="ecei_catgan", entity="rkube", config=args)
-np = pyimport("numpy")                    
-
-
 # num_depth is the number of ecei frames bundled together into a single example
-data_1 = load_from_hdf(2.6, 2.7, 35000, 50000, "/home/rkube/gpfs/KSTAR/025259", 25259, "GT");
-#data_2 = load_from_hdf(5.9, 6.0, 5000, 20000, "/home/rkube/gpfs/KSTAR/025879", 25879, "GR");
+#data_1 = load_from_hdf(2.6, 2.7, 35000, 50000, "/home/rkube/gpfs/KSTAR/025259", 25259, "GT");
+data_1 = load_from_hdf(5.9, 6.0, 35000, 50000, "/home/rkube/gpfs/KSTAR/025260", 25260, "GT");
+data_2 = load_from_hdf(5.4, 5.5, 5000, 10000, "/home/rkube/gpfs/KSTAR/025880", 25880, "GR");
 data_3 = load_from_hdf(2.6, 2.7, 5000, 9000, "/home/rkube/gpfs/KSTAR/022289", 22289, "GT");
 
-num_samples = size(data_1)[end] ÷ args["num_depth"];
-data_1_tr = data_1[:, :, 1:num_samples * args["num_depth"]]; 
-clamp!(data_1_tr, -0.15, 0.15);
-trf = fit(UnitRangeTransform, data_1_tr[:]);
-data_1_tr = StatsBase.transform(trf, data_1_tr[:]);
-data_1_tr = reshape(data_1_tr, (24, 8, args["num_depth"], 1, num_samples));
-
-num_samples = size(data_3)[end] ÷ args["num_depth"];
-data_3_tr = data_3[:, :, 1:num_samples * args["num_depth"]]; 
-clamp!(data_3_tr, -0.15, 0.15);
-trf = fit(UnitRangeTransform, data_3_tr[:]);
-data_3_tr = StatsBase.transform(trf, data_3_tr[:]);
-data_3_tr = reshape(data_3_tr, (24, 8, args["num_depth"], 1, num_samples));
-
-data_all = cat(data_1_tr, data_3_tr, dims=ndims(data_1_tr)) |> gpu;
+data_1_tr = transform_dataset(data_1, args);
+data_2_tr = transform_dataset(data_2, args);
+data_3_tr = transform_dataset(data_3, args);
+data_all = cat(data_1_tr, data_2_tr, data_3_tr, dims=ndims(data_1_tr)) |> gpu;
 
 # Label the various classes
-labels_1 = onehotbatch(repeat([:a], size(data_1_tr)[end]), [:a, :b]) |> gpu;
-labels_3 = onehotbatch(repeat([:b], size(data_3_tr)[end]), [:a, :b]) |> gpu;
-labels_all = cat(labels_1, labels_3, dims=2);
+labels_1 = onehotbatch(repeat([:a], size(data_1_tr)[end]), [:a, :b, :c]) |> gpu;
+labels_2 = onehotbatch(repeat([:b], size(data_1_tr)[end]), [:a, :b, :c]) |> gpu;
+labels_3 = onehotbatch(repeat([:c], size(data_3_tr)[end]), [:a, :b, :c]) |> gpu;
+labels_all = cat(labels_1, labels_2, labels_3, dims=2);
 
 
 # Train / test split
@@ -76,6 +68,9 @@ ps_D = Flux.params(D);
 ps_G = Flux.params(G);
 
 epoch_size = length(loader_train);
+
+wb_logger = WandbLogger(project="ecei_catgan_3", entity="rkube", config=args)
+np = pyimport("numpy")                    
 
 num_batch = 1
 for epoch ∈ 1:args["num_epochs"]
@@ -109,7 +104,7 @@ for epoch ∈ 1:args["num_epochs"]
         Flux.update!(opt_G, ps_G, grads_G)
 
         if num_batch % 25 == 0
-            (x_test, y_test) = first(loader_test)
+            (x_test, y_test) = first(loader_test);
             testmode!(G);
             testmode!(D);
             y_real = D(x_test);
@@ -125,8 +120,8 @@ for epoch ∈ 1:args["num_epochs"]
             grads_G1 = grads_G[ps_G[1]][:] |> cpu;
             grads_G4 = grads_G[ps_G[4]][:] |> cpu;
 
-            img = fake_image_3d(G, args, 16);
-            img = convert(Array{Float32}, img);
+            img = channelview(fake_image_3d(G, args, 16));
+            img = permutedims(img, (3,1,2));
 
             Wandb.log(wb_logger, Dict("batch" => num_batch, 
                                       "crossentropy" => xentropy,
@@ -143,6 +138,19 @@ for epoch ∈ 1:args["num_epochs"]
         end
         global num_batch += 1;
     end
+    D_c = D |> cpu;
+    G_c = G |> cpu;
+    @save "/home/rkube/gpfs/catgan_epoch$(epoch).bson" D_c G_c
 end
 
 close(wb_logger)
+
+# test how well we predict class on the training loader:
+(x,y) = first(loader_train);
+preds = Flux.onecold(D(x), [:a, :b, :c]);
+preds .== Flux.onecold(y, [:a, :b, :c])
+
+D_c = D|> cpu;
+G_c = G|> cpu;
+@save "/home/rkube/gpfs/catgan.bson" D_c G_c
+
