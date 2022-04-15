@@ -24,9 +24,7 @@ open("config_ddc.json", "r") do io
     global args = JSON.parse(io)
 end
 
-#wb_logger = WandbLogger(project="ecei_catgan_3class", entity="rkube", config=args)
-#np = pyimport("numpy")    
-
+np = pyimport("numpy")    
 
 # num_depth is the number of ecei frames bundled together into a single example
 data_1 = load_from_hdf(5.9, 6.1, 35000, 50000, "/home/rkube/gpfs/KSTAR/025260", 25260, "GT");
@@ -73,6 +71,7 @@ all_loss_simp = zeros(length(loader_train) * args["num_epochs"]);
 all_loss_orth = zeros(length(loader_train) * args["num_epochs"]);
 
 iter = 1
+wb_logger = WandbLogger(project="ecei_ddc_3class_scan1", entity="rkube", config=args)
 for epoch ∈ 1:args["num_epochs"]
     @show epoch
     for (x,y) in loader_train
