@@ -84,6 +84,46 @@ function get_cat_discriminator_3d(args)
     final_size = final_size_H * final_size_W * final_size_D * args["num_channels"][4]
 
     # Size annotations are for dim(x)[3] = 10, i.e. num_channels=10
+    return Chain(Conv(filter_size_list[1], 1=>args["num_channels"][1], init=Flux.kaiming_uniform, bias=false),
+                 BatchNorm(args["num_channels"][1], act),
+                 Conv(filter_size_list[2], args["num_channels"][1] => args["num_channels"][2], init=Flux.kaiming_uniform, bias=false),        
+                 BatchNorm(args["num_channels"][2], act),
+                 Conv(filter_size_list[3], args["num_channels"][2] => args["num_channels"][3], init=Flux.kaiming_uniform, bias=false),     
+                 BatchNorm(args["num_channels"][3], act),
+                 Conv(filter_size_list[4], args["num_channels"][3] => args["num_channels"][4], init=Flux.kaiming_uniform, bias=false),
+                 BatchNorm(args["num_channels"][4], act),
+                 Flux.flatten, 
+                 Dense(final_size, final_size, act, init=Flux.kaiming_uniform),
+                 Dense(final_size, args["num_classes"]),
+                 ## MiniBatch Discrimination goes together with Dense(final_size + args["fc_size"]...
+                 ##MinibatchDiscrimination(final_size, args["fc_size"], args["mbatch_hidden"]),
+                 ##Dense(final_size + args["fc_size"], args["num_classes"], init=Flux.kaiming_uniform),
+                 x -> softmax(x));
+end
+
+function get_cat_discriminator_3d_fcfinal(args)
+    # Apply 3d convolution
+    if args["activation"] in ["celu", "elu", "leakyrelu"]
+        act = Base.Fix2(getfield(NNlib, Symbol(args["activation"])), Float32(args["activation_alpha"]))
+    else
+        act = getfield(NNlib, Symbol(args["activation"]));
+    end
+
+    # 4 layers are hard-coded
+    # Compile list of the transpose-conv filter sizes for each of the four layers
+    filter_size_list = [(args["filter_size_H"][k], args["filter_size_W"][k], args["filter_size_D"][k]) for k in [1,2,3,4]]
+
+    # Calculate the final size of the layers
+    final_size_H = reduce((W, S) -> conv_layer_size(W, S...),
+                          [(w, 1) for w in args["filter_size_H"]], init=24)
+    final_size_W = reduce((W, S) -> conv_layer_size(W, S...),
+                          [(w, 1) for w in args["filter_size_W"]], init=8)
+    final_size_D = reduce((W, S) -> conv_layer_size(W, S...),
+                          [(w, 1) for w in args["filter_size_D"]], init=args["num_depth"])
+
+    final_size = final_size_H * final_size_W * final_size_D * args["num_channels"][4]
+
+    # Size annotations are for dim(x)[3] = 10, i.e. num_channels=10
     return Chain(Conv(filter_size_list[1], 1=>args["num_channels"][1], act, init=Flux.kaiming_uniform, bias=false),
                  #BatchNorm(args["num_channels"][1], act),
                  Conv(filter_size_list[2], args["num_channels"][1] => args["num_channels"][2], act, init=Flux.kaiming_uniform, bias=false),        
@@ -94,7 +134,8 @@ function get_cat_discriminator_3d(args)
                  Flux.flatten, 
                  MinibatchDiscrimination(final_size, args["fc_size"], args["mbatch_hidden"]),
                  #BatchNorm(args["num_channels"][4], act),
-                 Dense(final_size + args["fc_size"], args["num_classes"], init=Flux.kaiming_uniform),
+                 Dense(final_size + args["fc_size"], args["fc_size"], act, init=Flux.kaiming_uniform, bias=false),
+                 Dense(args["fc_size"], args["num_classes"], init=Flux.kaiming_uniform),
                  x -> softmax(x));
 end
 

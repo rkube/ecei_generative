@@ -93,6 +93,7 @@ function transform_dataset(data_raw, args)
     clamp!(data_tr, -0.15, 0.15);
     trf = fit(UnitRangeTransform, data_tr[:]);
     data_tr = StatsBase.transform(trf, data_tr[:]);
+    data_tr = 2f0 .* data_tr .- 1f0;
     return reshape(data_tr, (24, 8, args["num_depth"], 1, num_samples));
 end
 

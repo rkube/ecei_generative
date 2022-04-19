@@ -25,7 +25,7 @@ using ecei_generative
 
 # Set up logging and pycall
 
-np = pyimport("numpy")                    
+np = pyimport("numpy")
 open("config.json", "r") do io
     global args = JSON.parse(io)
 end
@@ -130,6 +130,7 @@ for epoch ∈ 1:args["num_epochs"]
 
             cluster_assignments = map_data_to_labels(pred_list, [:a, :b, :c])
             cluster_accuracy = sum([sum(y .== assgn) for (y, assgn) in zip(pred_list, cluster_assignments)]) / sum(length(y) for y in pred_list)
+            @show cluster_accuracy
 
             y_real = y_real |> cpu;
             y_fake = y_fake |> cpu;
@@ -159,9 +160,9 @@ for epoch ∈ 1:args["num_epochs"]
         end
         global num_batch += 1;
     end
-    #D_c = D |> cpu;
-    #G_c = G |> cpu;
-    #@save "/home/rkube/gpfs/catgan_epoch$(epoch).bson" D_c G_c
+    D_c = D |> cpu;
+    G_c = G |> cpu;
+    @save "/home/rkube/gpfs/catgan_eval_357_pm1/catgan_epoch$(epoch).bson" D_c G_c
 end
 
 close(wb_logger)

@@ -2,6 +2,7 @@
     "batch_size": 128, 
     "activation": "relu", 
     "activation_alpha": 0.2, 
+    "bias": true, 
     "num_epochs": 20, 
     "num_classes": 3, 
     "num_depth": 10, 
