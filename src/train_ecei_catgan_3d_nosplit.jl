@@ -45,29 +45,18 @@ labels_1 = onehotbatch(repeat([:a], size(data_1_tr)[end]), [:a, :b, :c]) |> gpu;
 labels_2 = onehotbatch(repeat([:b], size(data_1_tr)[end]), [:a, :b, :c]) |> gpu;
 labels_3 = onehotbatch(repeat([:c], size(data_3_tr)[end]), [:a, :b, :c]) |> gpu;
 
-# Train / test split
-split_ratio = 0.5     
-# Calculate number of training / validation points from each individual dataset
-num_train_1 = round(size(data_1_tr)[end] * split_ratio) |> Int
-num_train_2 = round(size(data_2_tr)[end] * split_ratio) |> Int
-num_train_3 = round(size(data_3_tr)[end] * split_ratio) |> Int
-
 # One train loader that yields random samples from all data sets
-data_train = cat(data_1_tr[:,:,:,:,1:num_train_1], data_2_tr[:,:,:,:,1:num_train_2], data_3_tr[:,:,:,:,1:num_train_3], dims=5);
-labels_train = cat(labels_1[:, 1:num_train_1], labels_2[:, 1:num_train_2], labels_3[:, 1:num_train_3], dims=2);
-loader_train = DataLoader((data_train, labels_train), batchsize=args["batch_size"], shuffle=true);
-
-data_test= cat(data_1_tr[:,:,:,:,num_train_1 + 1:end], data_2_tr[:,:,:,:,num_train_2 + 1:end], data_3_tr[:,:,:,:,num_train_3 + 1:end], dims=5);
-labels_test = cat(labels_1[:, num_train_1 + 1:end], labels_2[:, num_train_2 + 1:end], labels_3[:, num_train_3 + 1:end], dims=2);
-loader_test = DataLoader((data_train, labels_train), batchsize=args["batch_size"], shuffle=true);
+data_all = cat(data_1_tr, data_2_tr, data_3_tr, dims=5);
+labels_all = cat(labels_1, labels_2, labels_3, dims=2);
+loader_all = DataLoader((data_all, labels_all), batchsize=args["batch_size"], shuffle=true);
 
 # Loader for verification give samples from individual datasets. These samples are not to be included in loader_train
-loader_1 = DataLoader((data_1_tr[:, :, :, :, num_train_1 + 1:end], labels_1[:, num_train_1 + 1:end]), batchsize=args["batch_size"], shuffle=true);
-loader_2 = DataLoader((data_2_tr[:, :, :, :, num_train_2 + 1:end], labels_2[:, num_train_2 + 1:end]), batchsize=args["batch_size"], shuffle=true);
-loader_3 = DataLoader((data_3_tr[:, :, :, :, num_train_3 + 1:end], labels_3[:, num_train_3 + 1:end]), batchsize=args["batch_size"], shuffle=true);
+loader_1 = DataLoader((data_1_tr, labels_1), batchsize=args["batch_size"], shuffle=true);
+loader_2 = DataLoader((data_2_tr, labels_2), batchsize=args["batch_size"], shuffle=true);
+loader_3 = DataLoader((data_3_tr, labels_3), batchsize=args["batch_size"], shuffle=true);
 
 D = get_cat_discriminator_3d(args) |> gpu;
-G = get_generator_3d(args) |> gpu;
+G = get_generator_3d_conv(args) |> gpu;
 
 opt_D = getfield(Flux, Symbol(args["opt_D"]))(args["lr_D"], Tuple(args["beta_D"]));
 opt_G = getfield(Flux, Symbol(args["opt_G"]))(args["lr_G"], Tuple(args["beta_D"]));
@@ -75,14 +64,12 @@ opt_G = getfield(Flux, Symbol(args["opt_G"]))(args["lr_G"], Tuple(args["beta_D"]
 ps_D = Flux.params(D);
 ps_G = Flux.params(G);
 
-epoch_size = length(loader_train);
-
-wb_logger = WandbLogger(project="ecei_catgan_3", entity="rkube", config=args)
-
+epoch_size = length(loader_all);
+wb_logger = WandbLogger(project="ecei_catgan_3_conv3d", entity="rkube", config=args)
 num_batch = 1
 for epoch ∈ 1:args["num_epochs"]
     @show epoch
-    for (x, y) ∈ loader_train
+    for (x, y) ∈ loader_all
         this_batch = size(x)[end]
         # Train the discriminator
         testmode!(G);
@@ -111,13 +98,13 @@ for epoch ∈ 1:args["num_epochs"]
         Flux.update!(opt_G, ps_G, grads_G)
 
         if num_batch % 25 == 0
-            (x_test, y_test) = first(loader_test);
+            (x, y) = first(loader_all);
             testmode!(G);
             testmode!(D);
-            y_real = D(x_test);
+            y_real = D(x);
             z = randn(Float32, args["latent_dim"], this_batch) |> gpu;
             y_fake = D(G(z));
-            xentropy = Flux.Losses.binarycrossentropy(y_real, y_test)
+            xentropy = Flux.Losses.binarycrossentropy(y_real, y)
 
             # Get predictions for the training data
             (x1, _) = first(loader_1);
@@ -134,10 +121,10 @@ for epoch ∈ 1:args["num_epochs"]
 
             y_real = y_real |> cpu;
             y_fake = y_fake |> cpu;
-            grads_D1 = grads_D[ps_D[1]][:] |> cpu;
-            grads_D4 = grads_D[ps_D[4]][:] |> cpu;
-            grads_G1 = grads_G[ps_G[1]][:] |> cpu;
-            grads_G4 = grads_G[ps_G[4]][:] |> cpu;
+            #grads_D1 = grads_D[ps_D[1]][:] |> cpu;
+            #grads_D4 = grads_D[ps_D[4]][:] |> cpu;
+            #grads_G1 = grads_G[ps_G[1]][:] |> cpu;
+            #grads_G4 = grads_G[ps_G[4]][:] |> cpu;
 
             img = channelview(fake_image_3d(G, args, 16));
             img = permutedims(img, (3,1,2));
@@ -145,10 +132,10 @@ for epoch ∈ 1:args["num_epochs"]
             Wandb.log(wb_logger, Dict("batch" => num_batch, 
                                       "crossentropy" => xentropy,
                                       "cluster_accuracy" => cluster_accuracy,
-                                      "hist_gradD_1" => Wandb.Histogram(grads_D1),
-                                      "hist_gradD_4" => Wandb.Histogram(grads_D4),
-                                      "hist_gradG_1" => Wandb.Histogram(grads_G1),
-                                      "hist_gradG_4" => Wandb.Histogram(grads_D4),
+                                      #"hist_gradD_1" => Wandb.Histogram(grads_D1),
+                                      #"hist_gradD_4" => Wandb.Histogram(grads_D4),
+                                      #"hist_gradG_1" => Wandb.Histogram(grads_G1),
+                                      #"hist_gradG_4" => Wandb.Histogram(grads_D4),
                                       "hist y_real" => Wandb.Histogram(y_real),
                                       "hist y_fake" => Wandb.Histogram(y_fake),
                                       "H_real" => -H_of_p(y_real),
@@ -162,6 +149,5 @@ for epoch ∈ 1:args["num_epochs"]
     G_c = G |> cpu;
     @save "/home/rkube/gpfs/catgan_epoch$(epoch).bson" D_c G_c
 end
-
 close(wb_logger)
 

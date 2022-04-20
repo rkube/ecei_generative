@@ -11,7 +11,7 @@ gemerator = ecei_generative.vanilla_generator() |> gpu;
 
 """
 
-export get_vanilla_discriminator, get_dc_discriminator, get_cat_discriminator,  get_vanilla_generator, get_dc_generator, get_dc_generator_v2, get_cat_discriminator_3d, get_generator_3d, get_ddc_v1
+export get_vanilla_discriminator, get_dc_discriminator, get_cat_discriminator,  get_vanilla_generator, get_dc_generator, get_dc_generator_v2, get_cat_discriminator_3d, get_generator_3d, get_ddc_v1, get_generator_3d_conv
 
 
 function get_vanilla_discriminator(n_features)
@@ -84,63 +84,25 @@ function get_cat_discriminator_3d(args)
     final_size = final_size_H * final_size_W * final_size_D * args["num_channels"][4]
 
     # Size annotations are for dim(x)[3] = 10, i.e. num_channels=10
-    return Chain(Conv(filter_size_list[1], 1=>args["num_channels"][1], init=Flux.kaiming_uniform, bias=false),
+    return Chain(Conv(filter_size_list[1], 1=>args["num_channels"][1], init=Flux.kaiming_uniform, bias=true),
                  BatchNorm(args["num_channels"][1], act),
-                 Conv(filter_size_list[2], args["num_channels"][1] => args["num_channels"][2], init=Flux.kaiming_uniform, bias=false),        
+                 Conv(filter_size_list[2], args["num_channels"][1] => args["num_channels"][2], init=Flux.kaiming_uniform, bias=true),
                  BatchNorm(args["num_channels"][2], act),
-                 Conv(filter_size_list[3], args["num_channels"][2] => args["num_channels"][3], init=Flux.kaiming_uniform, bias=false),     
+                 Conv(filter_size_list[3], args["num_channels"][2] => args["num_channels"][3], init=Flux.kaiming_uniform, bias=true),
                  BatchNorm(args["num_channels"][3], act),
-                 Conv(filter_size_list[4], args["num_channels"][3] => args["num_channels"][4], init=Flux.kaiming_uniform, bias=false),
+                 Conv(filter_size_list[4], args["num_channels"][3] => args["num_channels"][4], init=Flux.kaiming_uniform, bias=true),
                  BatchNorm(args["num_channels"][4], act),
                  Flux.flatten, 
-                 Dense(final_size, final_size, act, init=Flux.kaiming_uniform),
-                 Dense(final_size, args["num_classes"]),
+                 #Dense(final_size, 128, act, init=Flux.kaiming_uniform),
+                 #Dense(128, args["num_classes"]),
                  ## MiniBatch Discrimination goes together with Dense(final_size + args["fc_size"]...
-                 ##MinibatchDiscrimination(final_size, args["fc_size"], args["mbatch_hidden"]),
-                 ##Dense(final_size + args["fc_size"], args["num_classes"], init=Flux.kaiming_uniform),
-                 x -> softmax(x));
-end
-
-function get_cat_discriminator_3d_fcfinal(args)
-    # Apply 3d convolution
-    if args["activation"] in ["celu", "elu", "leakyrelu"]
-        act = Base.Fix2(getfield(NNlib, Symbol(args["activation"])), Float32(args["activation_alpha"]))
-    else
-        act = getfield(NNlib, Symbol(args["activation"]));
-    end
-
-    # 4 layers are hard-coded
-    # Compile list of the transpose-conv filter sizes for each of the four layers
-    filter_size_list = [(args["filter_size_H"][k], args["filter_size_W"][k], args["filter_size_D"][k]) for k in [1,2,3,4]]
-
-    # Calculate the final size of the layers
-    final_size_H = reduce((W, S) -> conv_layer_size(W, S...),
-                          [(w, 1) for w in args["filter_size_H"]], init=24)
-    final_size_W = reduce((W, S) -> conv_layer_size(W, S...),
-                          [(w, 1) for w in args["filter_size_W"]], init=8)
-    final_size_D = reduce((W, S) -> conv_layer_size(W, S...),
-                          [(w, 1) for w in args["filter_size_D"]], init=args["num_depth"])
-
-    final_size = final_size_H * final_size_W * final_size_D * args["num_channels"][4]
-
-    # Size annotations are for dim(x)[3] = 10, i.e. num_channels=10
-    return Chain(Conv(filter_size_list[1], 1=>args["num_channels"][1], act, init=Flux.kaiming_uniform, bias=false),
-                 #BatchNorm(args["num_channels"][1], act),
-                 Conv(filter_size_list[2], args["num_channels"][1] => args["num_channels"][2], act, init=Flux.kaiming_uniform, bias=false),        
-                 #BatchNorm(args["num_channels"][2], act),
-                 Conv(filter_size_list[3], args["num_channels"][2] => args["num_channels"][3], act, init=Flux.kaiming_uniform, bias=false),     
-                 #BatchNorm(args["num_channels"][3], act),
-                 Conv(filter_size_list[4], args["num_channels"][3] => args["num_channels"][4], act, init=Flux.kaiming_uniform, bias=false),
-                 Flux.flatten, 
                  MinibatchDiscrimination(final_size, args["fc_size"], args["mbatch_hidden"]),
-                 #BatchNorm(args["num_channels"][4], act),
-                 Dense(final_size + args["fc_size"], args["fc_size"], act, init=Flux.kaiming_uniform, bias=false),
-                 Dense(args["fc_size"], args["num_classes"], init=Flux.kaiming_uniform),
+                 Dense(final_size + args["fc_size"], args["num_classes"], init=Flux.kaiming_uniform),
                  x -> softmax(x));
 end
 
-
-function get_vanilla_generator(latent_dim, n_features)return Chain(Dense(latent_dim, 128, x -> leakyrelu(x, 0.2f0)),
+function get_vanilla_generator(latent_dim, n_features)
+    return Chain(Dense(latent_dim, 128, x -> leakyrelu(x, 0.2f0)),
                  Dense(128, 128, x -> leakyrelu(x, 0.2f0)),
                  Dense(128, 128, x -> leakyrelu(x, 0.2f0)),
                  Dense(128, n_features, tanh))
@@ -199,17 +161,52 @@ function get_generator_3d(args)
     init_size_D = reduce((W, S) -> conv_layer_size(W, S...),
                           [(w, 1) for w in args["filter_size_D"]], init=args["num_depth"])
 
-    return Chain(Dense(args["latent_dim"], 512, act, init=Flux.kaiming_uniform),
+    return Chain(Dense(args["latent_dim"], init_size_H * init_size_W * init_size_D * args["num_channels"][4], act, init=Flux.kaiming_uniform),
                  Dropout(0.2),
                  # First layer is from hard-coded 512 to the initial size of the image
-                 Dense(512, init_size_H * init_size_W * init_size_D * args["num_channels"][4], act, init=Flux.kaiming_uniform),
-                 Dropout(0.2),
+                 #Dense(512, init_size_H * init_size_W * init_size_D * args["num_channels"][4], act, init=Flux.kaiming_uniform),
+                 #Dropout(0.2),
                  # Re-shape to be used as input for transpose convolutions
                  x -> reshape(x, (init_size_H, init_size_W, init_size_D, args["num_channels"][4], :)),
-                 ConvTranspose(filter_size_list[4], args["num_channels"][4] => args["num_channels"][3], act, bias=false, init=Flux.kaiming_uniform),
-                 ConvTranspose(filter_size_list[3], args["num_channels"][3] => args["num_channels"][2], act, bias=false, init=Flux.kaiming_uniform),
-                 ConvTranspose(filter_size_list[2], args["num_channels"][2] => args["num_channels"][1], act, bias=false, init=Flux.kaiming_uniform),
-                 ConvTranspose(filter_size_list[1], args["num_channels"][1] => 1, tanh, bias=false))
+                 ConvTranspose(filter_size_list[4], args["num_channels"][4] => args["num_channels"][3], init=Flux.kaiming_uniform, bias=false),
+                 BatchNorm(args["num_channels"][3], act),
+                 ConvTranspose(filter_size_list[3], args["num_channels"][3] => args["num_channels"][2], init=Flux.kaiming_uniform, bias=false),
+                 BatchNorm(args["num_channels"][2], act),
+                 ConvTranspose(filter_size_list[1], args["num_channels"][2] => args["num_channels"][1], init=Flux.kaiming_uniform, bias=false),
+                 BatchNorm(args["num_channels"][1], act),
+                 ConvTranspose(filter_size_list[1], args["num_channels"][1] => 1, tanh))
+end
+
+
+
+function get_generator_3d_conv(args)
+    if args["activation"] in ["celu", "elu", "leakyrelu"]
+        act = Base.Fix2(getfield(NNlib, Symbol(args["activation"])), Float32(args["activation_alpha"]))
+    else
+        act = getfield(NNlib, Symbol(args["activation"]));
+    end 
+
+    init_size_H = 6
+    init_size_W = 2
+    init_size_D = 2
+
+    filter_size_list = [(5,3,3), (3,3,3), (3,3,1)]
+
+
+    Chain(Dense(args["latent_dim"], init_size_H * init_size_W * init_size_D * args["num_channels"][3], relu),
+          Dropout(0.3),
+          x -> reshape(x, (init_size_H, init_size_W, init_size_D, args["num_channels"][3], :)),
+          ConvTranspose((5, 5, 5), args["num_channels"][3] => args["num_channels"][3], stride=(2,2,2)),    # (17, 9, 5)
+          BatchNorm(args["num_channels"][3], act),
+          Conv(filter_size_list[1], args["num_channels"][3] => args["num_channels"][3], pad=(1,1,1), act),                   # (13, 7, 3)
+          BatchNorm(args["num_channels"][3], act),
+          Conv(filter_size_list[1], args["num_channels"][3] => args["num_channels"][2], pad=(1,0,0), act),                   # (9,  5, 5)
+          BatchNorm(args["num_channels"][2], act),
+          ConvTranspose((4, 4, 4), args["num_channels"][2] => args["num_channels"][2], stride=(2,2,2), act),    # (18, 10, 10)
+          BatchNorm(args["num_channels"][2], act),
+          Conv(filter_size_list[2], args["num_channels"][2] => args["num_channels"][1], pad=(1,0,0), act),                   # (14, 8, 8)
+          BatchNorm(args["num_channels"][1], act),
+          Conv(filter_size_list[2], args["num_channels"][1] => 1, pad=(1,0,0), tanh))                   # (10, 6, 6)
 end
 
 

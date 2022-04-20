@@ -70,16 +70,18 @@ end
 # Calculates the size of a convolution layer given
 # W: Width of the input array
 # K: Kernel size
+# P: Padding
 # S: Stride
-# No padding
-conv_layer_size(W, K, S) = floor((W-K)/S) + 1|> Int
+conv_layer_size(W::Int, K::Int, P::Int, S::Int) = floor((W + 2P - K)/S) + 1|> Int
+conv_layer_size(W, K, S) = conv_layer_size(W, K, 0, S)
 
 # Calculates the size of a transpose convolution layer given
 # W: Width of input array
 # K: Kernel size
+# P: Padding
 # S: Stride
-# No padding
-trconv_layer_size(W, K, S) = floor((W-1)*S) + K |> Int
+trconv_layer_size(W::Int, K::Int, P::Int, S::Int) = floor((W-1)*S) - 2*P + K |> Int
+trconv_layer_size(W, K, S) = trconv_layer_size(W, K, 0, S)
 
 
 

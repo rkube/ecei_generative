@@ -89,7 +89,7 @@ Transforms and reshapes dataset. UnitRangeTransform is hardcoded.
 """
 function transform_dataset(data_raw, args)
     num_samples = size(data_raw)[end] ÷ args["num_depth"];
-    data_tr = data_raw[:, :, 1:num_samples * args["num_depth"]];
+   data_tr = data_raw[:, :, 1:num_samples * args["num_depth"]];
     clamp!(data_tr, -0.15, 0.15);
     trf = fit(UnitRangeTransform, data_tr[:]);
     data_tr = StatsBase.transform(trf, data_tr[:]);
