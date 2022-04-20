@@ -1,9 +1,9 @@
 {
     "batch_size": 128, 
     "activation": "leakyrelu", 
-    "activation_alpha": 0.01, 
+    "activation_alpha": 0.2, 
     "num_epochs": 15, 
-    "latent_dim": 64, 
+    "latent_dim": 128, 
     "lambda": 0.00, 
     "num_classes": 3, 
     "num_depth": 8, 
@@ -15,8 +15,8 @@
     "num_channels": [32, 32, 64, 64], 
     "opt_D": "ADAM", 
     "opt_G": "ADAM", 
-    "lr_D": 0.001, 
-    "lr_G": 0.002, 
+    "lr_D": 0.0005, 
+    "lr_G": 0.0005, 
     "beta_D": [0.9, 0.999], 
     "beta_G": [0.9, 0.999]
 }

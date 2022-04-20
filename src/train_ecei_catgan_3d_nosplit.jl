@@ -71,13 +71,13 @@ for epoch ∈ 1:args["num_epochs"]
     @show epoch
     for (x, y) ∈ loader_all
         this_batch = size(x)[end]
+        z = randn(Float32, args["latent_dim"], this_batch) |> gpu;
         # Train the discriminator
         testmode!(G);
         trainmode!(D);
         loss_D, back_D = Zygote.pullback(ps_D) do
             # Sample noise and generate a batch of fake data
             y_real = D(x)
-            z = randn(Float32, args["latent_dim"], this_batch) |> gpu;
             y_fake = D(G(z))
             loss_D = -H_of_p(y_real) + E_of_H_of_p(y_real) - E_of_H_of_p(y_fake) + args["lambda"] * Flux.Losses.binarycrossentropy(y_real, y)
         end
@@ -90,7 +90,6 @@ for epoch ∈ 1:args["num_epochs"]
         testmode!(D);
         trainmode!(G);
         loss_G, back_G = Zygote.pullback(ps_G) do
-            z = randn(Float32, args["latent_dim"], this_batch) |> gpu;
             y_fake = D(G(z));
             loss_G = -H_of_p(y_fake) + E_of_H_of_p(y_fake)
         end

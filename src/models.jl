@@ -93,8 +93,7 @@ function get_cat_discriminator_3d(args)
                  Conv(filter_size_list[4], args["num_channels"][3] => args["num_channels"][4], init=Flux.kaiming_uniform, bias=true),
                  BatchNorm(args["num_channels"][4], act),
                  Flux.flatten, 
-                 #Dense(final_size, 128, act, init=Flux.kaiming_uniform),
-                 #Dense(128, args["num_classes"]),
+                 #Dense(final_size, args["num_classes"], init=Flux.kaiming_uniform),
                  ## MiniBatch Discrimination goes together with Dense(final_size + args["fc_size"]...
                  MinibatchDiscrimination(final_size, args["fc_size"], args["mbatch_hidden"]),
                  Dense(final_size + args["fc_size"], args["num_classes"], init=Flux.kaiming_uniform),
@@ -196,17 +195,17 @@ function get_generator_3d_conv(args)
     Chain(Dense(args["latent_dim"], init_size_H * init_size_W * init_size_D * args["num_channels"][3], relu),
           Dropout(0.3),
           x -> reshape(x, (init_size_H, init_size_W, init_size_D, args["num_channels"][3], :)),
-          ConvTranspose((5, 5, 5), args["num_channels"][3] => args["num_channels"][3], stride=(2,2,2)),    # (17, 9, 5)
+          ConvTranspose((5, 5, 5), args["num_channels"][3] => args["num_channels"][3], stride=(2,2,2)),      # (17, 9, 5)
           BatchNorm(args["num_channels"][3], act),
-          Conv(filter_size_list[1], args["num_channels"][3] => args["num_channels"][3], pad=(1,1,1), act),                   # (13, 7, 3)
+          Conv(filter_size_list[1], args["num_channels"][3] => args["num_channels"][3], pad=(1,1,1), act),   # (13, 7, 3)
           BatchNorm(args["num_channels"][3], act),
-          Conv(filter_size_list[1], args["num_channels"][3] => args["num_channels"][2], pad=(1,0,0), act),                   # (9,  5, 5)
+          Conv(filter_size_list[1], args["num_channels"][3] => args["num_channels"][2], pad=(1,0,0), act),   # (9,  5, 5)
           BatchNorm(args["num_channels"][2], act),
-          ConvTranspose((4, 4, 4), args["num_channels"][2] => args["num_channels"][2], stride=(2,2,2), act),    # (18, 10, 10)
+          ConvTranspose((4, 4, 4), args["num_channels"][2] => args["num_channels"][2], stride=(2,2,2), act), # (18, 10, 10)
           BatchNorm(args["num_channels"][2], act),
-          Conv(filter_size_list[2], args["num_channels"][2] => args["num_channels"][1], pad=(1,0,0), act),                   # (14, 8, 8)
+          Conv(filter_size_list[2], args["num_channels"][2] => args["num_channels"][1], pad=(1,0,0), act),   # (14, 8, 8)
           BatchNorm(args["num_channels"][1], act),
-          Conv(filter_size_list[2], args["num_channels"][1] => 1, pad=(1,0,0), tanh))                   # (10, 6, 6)
+          Conv(filter_size_list[2], args["num_channels"][1] => 1, pad=(1,0,0), tanh))                        # (10, 6, 6)
 end
 
 
@@ -241,10 +240,10 @@ function get_ddc_v1(args)
                           init=args["num_depth"])
     final_size = final_size_H * final_size_W * final_size_D * args["num_channels"][2]
 
-    return Chain(Conv(filter_size_list[1], 1=>args["num_channels"][1], bias=false, init=Flux.kaiming_uniform),
+    return Chain(Conv(filter_size_list[1], 1=>args["num_channels"][1], init=Flux.kaiming_uniform),
                  MaxPool((args["maxpool_size_H"][1], args["maxpool_size_W"][1], args["maxpool_size_D"][1])),
                  x -> act.(x),
-                 Conv(filter_size_list[2], args["num_channels"][1] => args["num_channels"][2],  bias=false, init=Flux.kaiming_uniform),
+                 Conv(filter_size_list[2], args["num_channels"][1] => args["num_channels"][2], init=Flux.kaiming_uniform),
                  MaxPool((args["maxpool_size_H"][2], args["maxpool_size_W"][2], args["maxpool_size_D"][1])),
                  x -> act.(x),
                  Flux.flatten, 

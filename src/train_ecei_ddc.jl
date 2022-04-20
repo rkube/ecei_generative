@@ -63,7 +63,7 @@ loader_3 = DataLoader((data_3_tr[:, :, :, :, num_train_3 + 1:end], labels_3[:, n
 
 model = get_ddc_v1(args) |> gpu;
 
-opt = getfield(Flux, Symbol(args["opt"]))(args["lr"], Tuple(args["beta"]));
+opt = getfield(Flux, Symbol(args["opt"]))(args["lr"]);
 ps = Flux.params(model);
 
 all_loss_cs = zeros(length(loader_train) * args["num_epochs"]);
@@ -131,7 +131,13 @@ for epoch ∈ 1:args["num_epochs"]
 
             cluster_assignments = map_data_to_labels(pred_list, [:a, :b, :c])
             cluster_accuracy = sum([sum(y .== assgn) for (y, assgn) in zip(pred_list, cluster_assignments)]) / sum(length(y) for y in pred_list)
-            @show iter, cluster_accuracy
+            Wandb.log(wb_logger, Dict("batch" => iter,
+                                      "cluster_accuracy" => cluster_accuracy,
+                                      "all_loss_cs" => all_loss_cs[iter],
+                                      "all_loss_simp" => all_loss_simp,
+                                      "all_loss_orth" => all_loss_orth))
+
+
         end
 
         global iter += 1;
