@@ -8,18 +8,36 @@ using ColorSchemes
 using Images
 using Combinatorics
 
-function fake_image(G, args, num_samples)
+function fake_image(G, args; img_height=24; img_width=8, num_rows=5, numn_cols=5)
+    num_samples = num_rows * num_cols
     # Generate num_samples samples from the generator G, concatenated along horizontal dimension
     noise = randn(Float32, args["latent_dim"], num_samples) |> gpu;
     x_fake = G(noise) |> cpu;
     x_fake = x_fake[:, :, 1, :];
-    img_array = zeros(Gray, 24, 8 * num_samples);
+    img_array = zeros(Gray, img_height, img_width * num_samples);
     for n in 1:num_samples
-        img_array[1:24, 8 * (n - 1) + 1 : 8 * n] = colorview(Gray, permutedims(x_fake[:, :, n], (2,1)))
+        img_array[1:img_height, img_width * (n - 1) + 1 : img_width* n] = colorview(Gray, permutedims(x_fake[:, :, n], (2,1)))
     end
     img_array = map(clamp01nan, img_array);    
 end
 
+
+function fake_image_mnist(G, latent_dim; img_width=28, img_height=28, num_rows=10, num_cols=10)
+    num_samples = num_rows * num_cols;
+
+    noise = randn(Float32, (latent_dim, 1, 1, num_samples)) |> gpu;
+    x_fake = G(noise) |> cpu;
+    x_fake = x_fake[:, :, 1, :];
+    img_array = zeros(Float32, img_height * num_rows, img_width*num_cols);
+    for row ∈ 1:num_rows
+        for col ∈ 1:num_cols
+            img_array[((row - 1) * img_height + 1):(row * img_height),
+                      ((col - 1) * img_width + 1):(col * img_width)] = permutedims(x_fake[:, :, ((row -1)* num_cols) + col], (2, 1))
+        end
+    end
+    colorview(Gray, img_array)
+
+end
 
 function fake_image_3d(G, args, num_samples)
     # Generate samples sequences from the generator G.

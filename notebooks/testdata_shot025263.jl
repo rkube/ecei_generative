@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.18.4
+# v0.18.1
 
 using Markdown
 using InteractiveUtils
@@ -82,17 +82,6 @@ contourf(data_filt[:,:, frame_0 + 18], clims=(-0.075,0.075),
 # 	gif(anim, fname, fps=5)
 # end
 
-# ╔═╡ e6a05812-cfdd-410e-acab-35d672b125f7
-begin
-	# Plot data normalization and look at clipping
-	data_tr = clamp.(data_filt, -0.15, 0.15);
-	tr = fit(UnitRangeTransform, data_tr[:]);
-	data_unif = StatsBase.transform(tr, data_tr[:]);
-
-	tr = fit(ZScoreTransform, data_tr[:]);
-	data_std = StatsBase.transform(tr, data_tr[:]);
-end
-
 # ╔═╡ f406951c-be9b-4262-b724-788b5f025a7c
 p = histogram(data_filt[:], title="Shot $(shotnr) - Processed")
 fname = @sprintf "%06d_hist_processed.png" shotnr
@@ -108,6 +97,17 @@ p = histogram(data_std[:], title="Shot $(shotnr) - ZScoreTransform")
 fname = @sprintf "%06d_hist_zscore.png" shotnr
 savefig(p, fname)
 
+# ╔═╡ e6a05812-cfdd-410e-acab-35d672b125f7
+begin
+	# Plot data normalization and look at clipping
+	data_tr = clamp.(data_filt, -0.15, 0.15);
+	tr = fit(UnitRangeTransform, data_tr[:]);
+	data_unif = StatsBase.transform(tr, data_tr[:]);
+
+	tr = fit(ZScoreTransform, data_tr[:]);
+	data_std = StatsBase.transform(tr, data_tr[:]);
+end
+
 # ╔═╡ Cell order:
 # ╠═51ca7818-6caf-11ec-341c-79ded0af6756
 # ╠═f533c82f-a09c-47ec-8387-50ce6efbc943
@@ -120,7 +120,7 @@ savefig(p, fname)
 # ╠═c841e1b7-51ea-409d-b381-726ca3cf2cea
 # ╠═5193ed87-e280-41b4-952c-fd4fe83ce1b2
 # ╠═d91f1d9b-7269-4225-ad94-3853831fe617
-# ╠═d4260907-9714-48fe-ac9c-522b2b4f92ed
-# ╠═b68fc6be-1e2d-4870-bc4d-750c8d1b3ecf
-# ╠═f771373d-d451-426a-a5a1-107732271f2a
-# ╠═6588fd14-b957-467a-96ba-03c59ac02efd
+# ╠═f406951c-be9b-4262-b724-788b5f025a7c
+# ╠═c82d1d8f-0a82-478e-8de0-b60c264a76f6
+# ╠═6531f024-ff36-4682-82ce-9f9c57482919
+# ╠═e6a05812-cfdd-410e-acab-35d672b125f7

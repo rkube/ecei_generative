@@ -93,10 +93,11 @@ function get_cat_discriminator_3d(args)
                  Conv(filter_size_list[4], args["num_channels"][3] => args["num_channels"][4], init=Flux.kaiming_uniform, bias=true),
                  BatchNorm(args["num_channels"][4], act),
                  Flux.flatten, 
-                 #Dense(final_size, args["num_classes"], init=Flux.kaiming_uniform),
+                 ## Use Final dense layer without minibatch discrimination
+                 Dense(final_size, args["num_classes"], init=Flux.kaiming_uniform),
                  ## MiniBatch Discrimination goes together with Dense(final_size + args["fc_size"]...
-                 MinibatchDiscrimination(final_size, args["fc_size"], args["mbatch_hidden"]),
-                 Dense(final_size + args["fc_size"], args["num_classes"], init=Flux.kaiming_uniform),
+                 #MinibatchDiscrimination(final_size, args["fc_size"], args["mbatch_hidden"]),
+                 #Dense(final_size + args["fc_size"], args["num_classes"], init=Flux.kaiming_uniform),
                  x -> softmax(x));
 end
 

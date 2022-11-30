@@ -65,7 +65,7 @@ ps_D = Flux.params(D);
 ps_G = Flux.params(G);
 
 epoch_size = length(loader_all);
-wb_logger = WandbLogger(project="ecei_catgan_3_conv3d", entity="rkube", config=args)
+#wb_logger = WandbLogger(project="ecei_catgan_3_conv3d", entity="rkube", config=args)
 num_batch = 1
 for epoch ∈ 1:args["num_epochs"]
     @show epoch
@@ -120,33 +120,29 @@ for epoch ∈ 1:args["num_epochs"]
 
             y_real = y_real |> cpu;
             y_fake = y_fake |> cpu;
-            #grads_D1 = grads_D[ps_D[1]][:] |> cpu;
-            #grads_D4 = grads_D[ps_D[4]][:] |> cpu;
-            #grads_G1 = grads_G[ps_G[1]][:] |> cpu;
-            #grads_G4 = grads_G[ps_G[4]][:] |> cpu;
 
             img = channelview(fake_image_3d(G, args, 16));
             img = permutedims(img, (3,1,2));
 
-            Wandb.log(wb_logger, Dict("batch" => num_batch, 
-                                      "crossentropy" => xentropy,
-                                      "cluster_accuracy" => cluster_accuracy,
-                                      #"hist_gradD_1" => Wandb.Histogram(grads_D1),
-                                      #"hist_gradD_4" => Wandb.Histogram(grads_D4),
-                                      #"hist_gradG_1" => Wandb.Histogram(grads_G1),
-                                      #"hist_gradG_4" => Wandb.Histogram(grads_D4),
-                                      "hist y_real" => Wandb.Histogram(y_real),
-                                      "hist y_fake" => Wandb.Histogram(y_fake),
-                                      "H_real" => -H_of_p(y_real),
-                                      "E_real" => E_of_H_of_p(y_real),
-                                      "E_fake" => E_of_H_of_p(y_fake),
-                                      "Generator" => Wandb.Image(img)))
+            #Wandb.log(wb_logger, Dict("batch" => num_batch, 
+            #                          "crossentropy" => xentropy,
+            #                          "cluster_accuracy" => cluster_accuracy,
+            #                          #"hist_gradD_1" => Wandb.Histogram(grads_D1),
+            #                          #"hist_gradD_4" => Wandb.Histogram(grads_D4),
+            #                          #"hist_gradG_1" => Wandb.Histogram(grads_G1),
+            #                          #"hist_gradG_4" => Wandb.Histogram(grads_D4),
+            #                          "hist y_real" => Wandb.Histogram(y_real),
+            #                          "hist y_fake" => Wandb.Histogram(y_fake),
+            #                          "H_real" => -H_of_p(y_real),
+            #                          "E_real" => E_of_H_of_p(y_real),
+            #                          "E_fake" => E_of_H_of_p(y_fake),
+            #                          "Generator" => Wandb.Image(img)))
         end
         global num_batch += 1;
     end
     D_c = D |> cpu;
     G_c = G |> cpu;
-    @save "/home/rkube/gpfs/catgan_epoch$(epoch).bson" D_c G_c
+    @save "/home/rkube/gpfs/catgan_222_epoch$(epoch).bson" D_c G_c
 end
-close(wb_logger)
+#close(wb_logger)
 

@@ -134,8 +134,8 @@ for epoch ∈ 1:args["num_epochs"]
             Wandb.log(wb_logger, Dict("batch" => iter,
                                       "cluster_accuracy" => cluster_accuracy,
                                       "all_loss_cs" => all_loss_cs[iter],
-                                      "all_loss_simp" => all_loss_simp,
-                                      "all_loss_orth" => all_loss_orth))
+                                      "all_loss_simp" => all_loss_simp[iter],
+                                      "all_loss_orth" => all_loss_orth[iter]))
 
 
         end

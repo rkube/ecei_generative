@@ -1,5 +1,5 @@
 ### A Pluto.jl notebook ###
-# v0.18.4
+# v0.18.1
 
 using Markdown
 using InteractiveUtils
@@ -126,11 +126,7 @@ savefig(p, fname)
 # ╠═c841e1b7-51ea-409d-b381-726ca3cf2cea
 # ╠═5193ed87-e280-41b4-952c-fd4fe83ce1b2
 # ╠═d91f1d9b-7269-4225-ad94-3853831fe617
-# ╠═eaad041c-bcfd-412c-9f84-7d1e4555304a
-# ╠═18c0caf8-63fa-49eb-9231-b8a80c25e81f
-# ╠═8cc3516a-c7d1-4b6a-a0d8-f506c60f12c5
 # ╠═2321746c-ca34-4f44-af8c-ab4b07e1d974
-# ╠═4cfe783d-9256-4a08-933f-5b20cc197d1c
-# ╠═93a63569-ae97-4059-859e-94db0c575737
-# ╠═fd07241d-da8e-4a86-bd4e-643fffaf3ac3
-# ╠═09361635-e427-45d3-a8b8-619ad102e405
+# ╠═f406951c-be9b-4262-b724-788b5f025a7c
+# ╠═c82d1d8f-0a82-478e-8de0-b60c264a76f6
+# ╠═6531f024-ff36-4682-82ce-9f9c57482919
