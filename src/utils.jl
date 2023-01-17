@@ -8,7 +8,7 @@ using ColorSchemes
 using Images
 using Combinatorics
 
-function fake_image(G, args; img_height=24; img_width=8, num_rows=5, numn_cols=5)
+function fake_image(G, args; img_height=24, img_width=8, num_rows=5, numn_cols=5)
     num_samples = num_rows * num_cols
     # Generate num_samples samples from the generator G, concatenated along horizontal dimension
     noise = randn(Float32, args["latent_dim"], num_samples) |> gpu;

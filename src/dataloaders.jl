@@ -125,10 +125,12 @@ function load_from_hdf(t_start, t_end, f_filt_lo, f_filt_hi, datadir, shotnr, de
     fid = h5open(joinpath(datadir, filename), "r")
     
     # Process TriggerTime and build timebase vectors
-    TriggerTime = read(attributes(fid["/ECEI"])["TriggerTime"]) # Time at trigger
+    TriggerTime = read(HDF5.attributes(fid["/ECEI"])["TriggerTime"]) # Time at trigger
     tbase = (1:5_000_000) .* dt .+ TriggerTime[1] # Time-base used for samples
     tidx_norm = (tbase .> t_norm_0) .& (tbase .< t_norm_1) # Indices that are to be used for normalization
     tidx_all = (tbase .> t_start) .& (tbase .< t_end) # Indices for data that will be returned
+
+	tbase_norm = tbase[tidx_all]
 
     # Allocate memory for arrays that will hold data used for normalization and the actual data
     # Allocate such that individual channel time series lie consecutive in memory since we later
@@ -180,6 +182,7 @@ function load_from_hdf(t_start, t_end, f_filt_lo, f_filt_hi, datadir, shotnr, de
 
     # Apply bandpass filter.
     # TODO: Remove hard-coded pass and stop band
+	@show f_filt_lo, f_filt_hi
 	responsetype = Bandpass(f_filt_lo, f_filt_hi; fs=1.0/dt) 
 	designmethod = Butterworth(4)
 	my_filter = digitalfilter(responsetype, designmethod)
@@ -192,5 +195,5 @@ function load_from_hdf(t_start, t_end, f_filt_lo, f_filt_hi, datadir, shotnr, de
 	end
 
     # Return the normalized, frequency-filtered data
-    return permutedims(data_norm_filt, [2, 3, 1])
+    return permutedims(data_norm_filt, [2, 3, 1]), tbase_norm
 end

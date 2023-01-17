@@ -1,0 +1,10 @@
+"25878":
+    type: "Island 3/2"
+    filaments: true
+    t_start: 3.9
+    t_end: 8.5
+    filter_f0: 5000
+    filter_f1: 9000
+    dev: "GR"
+    mode_t0: 3.904
+    mode_t1: 3.905

@@ -32,7 +32,7 @@ begin
 	filter_f1 = 9000
 	shotnr = 22289
 	dev = "GT"
-	datadir = @sprintf "/home/rkube/gpfs/KSTAR/%06d" shotnr
+	datadir = @sprintf "/home/rkube/gpfs/kstar_ecei/%06d" shotnr
 end
 
 # ╔═╡ 3040e530-2c83-4e19-afa1-a7923e725f9f

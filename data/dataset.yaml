@@ -1,0 +1,285 @@
+"11073":
+    type: "ELM"
+    filaments: true
+
+
+"22289":
+    type: ELM
+    filaments: true
+
+"22500":
+    type: "ELM"
+    filaments: false
+    t_start: 4.526
+    t_end: 4.527
+    filter_f0: 5000
+    filter_f1: 9000
+    dev: "GT"
+    mode_t0: 4.526
+    mode_t1: 4.527
+
+
+"23012":
+    type: "ELM"
+    filaments: true
+    t_start: 3.020
+    t_end: 3.021
+    filter_f0: 5000
+    filter_f1: 9000
+    dev: "GT"
+    mode_t0: 3.020
+    mode_t1: 3.021
+
+"23522":
+    type: "ELM"
+    filaments: true
+    t_start: 4.560
+    t_end: 4.561
+    filter_f0: 5000
+    filter_f1: 9000
+    dev: "GT"
+    mode_t0: 4.56
+    mode_t1: 4.561
+
+"23914":
+    type: "ELM"
+    filaments: true
+    t_start: 2.950
+    t_end: 2.951
+    filter_f0: 5000
+    filter_f1: 9000
+    dev: "GT"
+    mode_t0: 2.950
+    mode_t1: 2.951
+
+"24562":
+    type: "ELM"
+    filaments: true
+    t_start: 4.145
+    t_end: 4.155
+    filter_f0: 5000
+    filter_f1: 9000
+    dev: "HT"
+    mode_t0: 4.151
+    mode_t1: 4.152
+
+"25086":
+    type: "ELM"
+    filaments: false
+    t_start: 4.0
+    t_end: 4.2
+    filter_f0: 5000
+    filter_f1: 9000
+    dev: "HT"
+    mode_t0: 4.128
+    mode_t1: 4.129
+
+"25259":
+    type: "Island 3/2"
+    filaments: true
+    t_start: 2.6
+    t_end: 10.0
+    filter_f0: 5000
+    filter_f1: 9000
+    dev: "GT"
+    mode_t0: 2.644
+    mode_t1: 2.645
+
+"25260":
+    type: "Island 3/2"
+    filaments: true
+    t_start: 4.2
+    t_end: 9.8
+    filter_f0: 5000
+    filter_f1: 9000
+    dev: "GT"
+    mode_t0: 5.909
+    mode_t1: 5.910
+
+
+"25263":
+    type: "Island 2/1"
+    filaments: true
+    t_start: 2.0
+    t_end: 3.5
+    filter_f0: 5000
+    filter_f1: 9000
+    dev: "GR"
+    mode_t0: 2.551 
+    mode_t1: 2.552
+
+"25329":
+    - type: "Bad"
+
+"25522":
+    type: "ELM"
+    filaments: false
+    t_start: 4.14
+    t_end: 4.18
+    filter_f0: 5000
+    filter_f1: 9000
+    dev: "GR"
+    mode_t0: 4.166
+    mode_t1: 4.167
+
+"25878":
+    type: "Island 3/2"
+    filaments: true
+    t_start: 3.9
+    t_end: 8.5
+    filter_f0: 5000
+    filter_f1: 9000
+    dev: "GR"
+    mode_t0: 3.904
+    mode_t1: 3.905
+
+"25879":
+    type: "Island 2/1"
+    filaments: true
+    t_start: 4.2
+    t_end: 9.5
+    filter_f0: 5000
+    filter_f1: 9000
+    dev: "GR"
+    mode_t0: 3.904
+    mode_t1: 3.905
+
+"25880":
+    type: "Island 2/1"
+    filaments: true
+    t_start: 5.0
+    t_end: 6.0
+    filter_f0: 5000
+    filter_f1: 9000
+    dev: "GR"
+    mode_t0: 5.500
+    mode_t1: 5.501
+
+"25881":
+    type: "Island 2/1"
+    filaments: true
+    t_start: 7.2
+    t_end: 9.5
+    filter_f0: 5000
+    filter_f1: 9000
+    dev: "GR"
+    mode_t0: 3.904
+    mode_t1: 3.905
+
+"25883":
+    type: "Island 2/1"
+    filaments: true
+    t_start: 5.0
+    t_end: 6.0
+    filter_f0: 5000
+    filter_f1: 9000
+    dev: "GR"
+    mode_t0: 5.500
+    mode_t1: 5.501
+
+"25897":
+    type: "Island 2/1"
+    filaments: true
+    t_start: 5.7
+    t_end: 10.0
+    filter_f0: 5000
+    filter_f1: 9000
+    dev: "GR"
+    mode_t0: 7.500
+    mode_t1: 7.501
+
+
+"25970":
+    type: "Island 3/2"
+    filaments: true
+    t_start: 4.5
+    t_end: 7.0
+    filter_f0: 5000
+    filter_f1: 9000
+    dev: "GR"
+    mode_t0: 3.904
+    mode_t1: 3.905
+
+"25975":
+    type: "Island 3/2"
+    filaments: true
+    t_start: 4.2
+    t_end: 4.35
+    filter_f0: 5000
+    filter_f1: 9000
+    dev: "GR"
+    mode_t0: 4.500
+    mode_t1: 4.501
+
+"25978":
+    type: "Island 2/1"
+    filaments: true
+    t_start: 4.0
+    t_end: 9.0
+    filter_f0: 5000
+    filter_f1: 9000
+    dev: "GR"
+    mode_t0: 4.500
+    mode_t1: 4.501
+
+"25972":
+    type: "Island 2/1"
+    filaments: true
+    t_start: 4.3
+    t_end: 4.8
+    filter_f0: 5000
+    filter_f1: 9000
+    dev: "GR"
+    mode_t0: 4.550
+    mode_t1: 4.551
+
+"25973":
+    type: "Island 2/1"
+    filaments: true
+    t_start: 4.8
+    t_end: 6.8
+    filter_f0: 5000
+    filter_f1: 9000
+    dev: "GR"
+    mode_t0: 5.800
+    mode_t1: 5.801
+
+"25976":
+    - type: "Island"
+    - filaments: false
+
+
+"25977":
+    type: "Island 2/1"
+    filaments: true
+    t_start: 4.3
+    t_end: 4.8
+    filter_f0: 5000
+    filter_f1: 9000
+    dev: "GR"
+    mode_t0: 4.550
+    mode_t1: 4.551
+
+"26327":
+    type: "ELM"
+    filaments: true
+    t_start: 2.84
+    t_end: 2.9
+    filter_f0: 5000
+    filter_f1: 9000
+    dev: "HT"
+    mode_t0: 2.84
+    mode_t1: 2.841
+
+"26512":
+    type: "ELM"
+    filaments: false
+    t_start: 2.36
+    t_end: 2.40
+    filter_f0: 5000
+    filter_f1: 9000
+    dev: "GT"
+    mode_t0: 2.366
+    mode_t1: 2.367
+
+
